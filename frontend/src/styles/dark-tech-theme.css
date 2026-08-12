@@ -251,10 +251,11 @@ body { min-width: 320px; }
   position: fixed;
   inset: 0;
   z-index: 998;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.82);
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.25s ease, visibility 0.25s ease;
+  backdrop-filter: blur(4px);
 }
 
 .nav-drawer-backdrop.is-open {
@@ -272,12 +273,14 @@ body { min-width: 320px; }
   width: min(86vw, 360px);
   padding: 26px 24px 22px;
   flex-direction: column;
-  background: rgba(19, 19, 26, 0.98);
+  background: rgba(13, 13, 18, 0.98);
   border-left: 1px solid var(--color-border);
   transform: translateX(102%);
   visibility: hidden;
-  transition: transform 0.3s cubic-bezier(0.22, 0.8, 0.3, 1), visibility 0.3s ease;
-  backdrop-filter: blur(20px);
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.3, 1), visibility 0.35s ease;
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.55);
 }
 
 .navbar-mobile.is-open {

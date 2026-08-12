@@ -75,12 +75,15 @@ export default function Team() {
 
       const buildNode = async (address, depth) => {
         const node = { address, depth, children: [] }
-        const info = await getUserInfo(address)
+        const [info, directCount] = await Promise.all([
+          getUserInfo(address),
+          getDirectReferralCount(address)
+        ])
         if (info) {
           node.memberId = info.memberId ? Number(info.memberId) : 0
           node.personalAmount = info.personalAmount || 0n
           node.level = info.level !== undefined ? Number(info.level) : 0
-          node.referralCount = info.teamTotalVolume ? Number(info.teamTotalVolume) : 0
+          node.referralCount = Number(directCount)
         } else {
           node.memberId = 0
           node.personalAmount = 0n
@@ -164,7 +167,7 @@ export default function Team() {
       <div className="network-node-content">
         <div className="network-node-main">
           <span className="network-node-address">{formatAddress(node.address)}</span>
-          <span className="network-node-meta">会员 ID: {node.memberId || '-'}</span>
+          <span className="network-node-meta">会员 ID: {node.memberId || '-'} · 直推 {node.referralCount} 人</span>
         </div>
         <div className="network-node-stats">
           <span className="network-node-amount">{formatNumber(node.personalAmount)} USDT</span>

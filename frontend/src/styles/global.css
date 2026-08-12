@@ -2544,3 +2544,409 @@ button {
     animation-duration: 0.01s;
   }
 }
+
+/* 团队网络树状视图 */
+.network-tree {
+  padding: 8px 0;
+}
+
+.network-node {
+  position: relative;
+  padding-left: 28px;
+  margin-bottom: 12px;
+}
+
+.network-node-root {
+  padding-left: 0;
+}
+
+.network-node-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-base);
+}
+
+.network-node-content:hover {
+  border-color: rgba(184, 134, 11, 0.4);
+  background: white;
+}
+
+.network-node-root > .network-node-content {
+  background: linear-gradient(135deg, rgba(184, 134, 11, 0.08), rgba(184, 134, 11, 0.02));
+  border-color: rgba(184, 134, 11, 0.25);
+}
+
+.network-node-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.network-node-address {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-slate);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.network-node-meta {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+.network-node-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.network-node-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.network-node-children {
+  position: relative;
+  margin-top: 12px;
+  padding-left: 24px;
+  border-left: 2px solid var(--color-border-light);
+}
+
+.network-node-children::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -2px;
+  width: 16px;
+  height: 16px;
+  border-left: 2px solid var(--color-border-light);
+  border-bottom: 2px solid var(--color-border-light);
+  border-bottom-left-radius: 8px;
+}
+
+/* 直推列表增强 */
+.referral-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.referral-index {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-sub);
+  flex-shrink: 0;
+}
+
+.referral-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.referral-sub {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+/* 出局警告 */
+.exit-alert {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.exit-alert-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.exit-alert-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.exit-alert-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-red);
+  margin-bottom: 4px;
+}
+
+.exit-alert-text {
+  font-size: 13px;
+  color: var(--color-text-sub);
+  margin: 0;
+}
+
+/* 仪表盘团队统计 */
+.team-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.team-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  text-align: center;
+}
+
+.team-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-stat-label {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+/* 最近收益列表 */
+.earnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.earning-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  transition: var(--transition-base);
+  text-decoration: none;
+}
+
+.earning-item:hover {
+  border-color: rgba(184, 134, 11, 0.35);
+  background: white;
+}
+
+.earning-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--color-border);
+  color: var(--color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.earning-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.earning-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.earning-meta {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+.earning-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* 质押页面 */
+.rate-power-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rate-power-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.rate-power-label {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+.rate-power-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-exit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: rgba(184, 134, 11, 0.06);
+  border: 1px solid rgba(184, 134, 11, 0.18);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.estimate-exit-label {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-weight: 500;
+}
+
+.estimate-exit-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-exit-hint {
+  font-size: 12px;
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.invite-link-box {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-link-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.invite-link-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.invite-link-hint {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  word-break: break-all;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* 多签 calldata 助手 */
+.calldata-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  margin-bottom: 12px;
+}
+
+/* 连接钱包卡片 */
+.connect-card {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* 响应式补充 */
+@media (max-width: 768px) {
+  .network-node-stats {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .network-node-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .team-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rate-power-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-link-value {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

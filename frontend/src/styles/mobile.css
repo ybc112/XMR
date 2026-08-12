@@ -1013,4 +1013,130 @@
   .value-breakdown-divider {
     background: rgba(255, 255, 255, 0.15);
   }
+
+  /* ===== 手机端简单下拉菜单 ===== */
+  .mobile-menu-backdrop,
+  .mobile-menu {
+    display: none;
+  }
+
+  .mobile-menu-backdrop.is-open,
+  .mobile-menu.is-open {
+    display: block;
+  }
+
+  .mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .mobile-menu-backdrop.is-open {
+    opacity: 1;
+  }
+
+  .mobile-menu {
+    position: fixed;
+    top: 78px;
+    left: 12px;
+    right: 12px;
+    z-index: 1150;
+    background: #12121A;
+    border: 1px solid rgba(255, 107, 53, 0.22);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(-14px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    max-height: calc(100dvh - 96px);
+    overflow-y: auto;
+  }
+
+  .mobile-menu.is-open {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .mobile-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 6px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 8px;
+  }
+
+  .mobile-menu-header .logo-text {
+    color: #fff;
+    font-size: 17px;
+  }
+
+  .mobile-menu-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+  }
+
+  .mobile-menu-close:active {
+    background: rgba(255, 107, 53, 0.2);
+  }
+
+  .mobile-menu-links {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 6px;
+  }
+
+  .mobile-menu-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 10px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    transition: background 0.15s ease;
+  }
+
+  .mobile-menu-link:active {
+    background: rgba(255, 107, 53, 0.1);
+  }
+
+  .mobile-menu-link.active {
+    color: var(--m-orange);
+    font-weight: 700;
+  }
+
+  .mobile-menu-connect {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--m-orange), #FF3B30);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+
+  .mobile-menu-connect:disabled {
+    opacity: 0.6;
+  }
 }

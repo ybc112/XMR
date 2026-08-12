@@ -104,44 +104,46 @@ export default function Navbar() {
       </div>
 
       <div
-        className={`nav-drawer-backdrop ${mobileOpen ? 'is-open' : ''}`}
+        className={`mobile-menu-backdrop ${mobileOpen ? 'is-open' : ''}`}
         onClick={() => setMobileOpen(false)}
         aria-hidden="true"
       />
-      <aside className={`navbar-mobile ${mobileOpen ? 'is-open' : ''}`} aria-hidden={!mobileOpen}>
-        <div className="nav-drawer-header">
-          <div>
-            <span className="nav-drawer-eyebrow">MONERO STAKE</span>
-            <h2>导航</h2>
-          </div>
-          <button className="nav-drawer-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <div className={`mobile-menu ${mobileOpen ? 'is-open' : ''}`} aria-hidden={!mobileOpen}>
+        <div className="mobile-menu-header">
+          <span className="logo-text">Monero <span>Stake</span></span>
+          <button className="mobile-menu-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
-        <nav className="nav-drawer-links">
-          {filteredNavItems.map((item, index) => (
+        <nav className="mobile-menu-links">
+          {filteredNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `nav-link-mobile ${isActive ? 'nav-link-active' : ''}`}
+              className={({ isActive }) => `mobile-menu-link ${isActive ? 'active' : ''}`}
               onClick={() => setMobileOpen(false)}
-              tabIndex={mobileOpen ? 0 : -1}
             >
-              <span className="nav-link-index">0{index + 1}</span>
-              <span>{item.label}</span>
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 12H19M14 7L19 12L14 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="nav-drawer-footer">
-          <span>PRIVATE WEALTH PROTOCOL</span>
-          <i />
-        </div>
-      </aside>
+        <button
+          className="mobile-menu-connect"
+          onClick={handleConnect}
+          disabled={isConnecting}
+        >
+          {isConnected ? (
+            <>
+              <span className="wallet-dot"></span>
+              {formatAddress(account)} · 断开
+            </>
+          ) : (
+            '连接钱包'
+          )}
+        </button>
+      </div>
     </header>
   )
 }

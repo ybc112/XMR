@@ -22,6 +22,11 @@ export default function Navbar() {
     setMobileOpen(false)
   }, [location])
 
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
   const handleConnect = () => {
     if (isConnected) {
       disconnectWallet()
@@ -85,6 +90,8 @@ export default function Navbar() {
         <button
           className="navbar-mobile-toggle"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? '关闭导航' : '打开导航'}
+          aria-expanded={mobileOpen}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             {mobileOpen ? (
@@ -96,22 +103,45 @@ export default function Navbar() {
         </button>
       </div>
 
-      {mobileOpen && (
-        <div className="navbar-mobile">
-          {filteredNavItems.map((item) => (
+      <div
+        className={`nav-drawer-backdrop ${mobileOpen ? 'is-open' : ''}`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+      <aside className={`navbar-mobile ${mobileOpen ? 'is-open' : ''}`} aria-hidden={!mobileOpen}>
+        <div className="nav-drawer-header">
+          <div>
+            <span className="nav-drawer-eyebrow">MONERO STAKE</span>
+            <h2>导航</h2>
+          </div>
+          <button className="nav-drawer-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <nav className="nav-drawer-links">
+          {filteredNavItems.map((item, index) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                `nav-link-mobile ${isActive ? 'nav-link-active' : ''}`
-              }
+              className={({ isActive }) => `nav-link-mobile ${isActive ? 'nav-link-active' : ''}`}
               onClick={() => setMobileOpen(false)}
+              tabIndex={mobileOpen ? 0 : -1}
             >
-              {item.label}
+              <span className="nav-link-index">0{index + 1}</span>
+              <span>{item.label}</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12H19M14 7L19 12L14 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </NavLink>
           ))}
+        </nav>
+        <div className="nav-drawer-footer">
+          <span>PRIVATE WEALTH PROTOCOL</span>
+          <i />
         </div>
-      )}
+      </aside>
     </header>
   )
 }

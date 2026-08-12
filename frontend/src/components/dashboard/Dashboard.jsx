@@ -155,7 +155,7 @@ export default function Dashboard() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">仪表盘</h1>
-        <p className="page-subtitle">Monero Stake 全景数据概览</p>
+        <p className="page-subtitle">Monero Stake <span className="text-shimmer">全景数据概览</span></p>
       </div>
 
       {/* 手机端专属：总资产 Hero + 快捷数据 + 功能宫格 */}
@@ -170,6 +170,7 @@ export default function Dashboard() {
               }
               decimals={4}
             />
+            <span className="total-value-unit">USDT</span>
           </div>
           <div className="total-value-breakdown">
             <div className="mobile-quick-stats">
@@ -258,7 +259,6 @@ export default function Dashboard() {
             className="mobile-menu-item"
             onClick={handleClaim}
             disabled={!userInfo?.isRegistered || (rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.exited}
-            style={{ border: 'none', background: 'var(--color-tech-panel)', width: '100%' }}
           >
             <div className="mobile-menu-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

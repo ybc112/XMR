@@ -7,6 +7,8 @@ import { ToastProvider } from './components/common/Toast.jsx'
 import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 import './styles/global.css'
 import './styles/mobile.css'
+import './styles/dark-tech-theme.css'
+import './styles/premium-effects.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

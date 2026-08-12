@@ -11,6 +11,7 @@ export default function Layout({ children }) {
         <div className="bg-particles"></div>
         <div className="bg-glow-top"></div>
         <div className="bg-glow-bottom"></div>
+        <div className="tech-grid-overlay"></div>
       </div>
 
       <Navbar />

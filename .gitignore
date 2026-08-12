@@ -17,5 +17,9 @@ coverage.json
 # 前端构建产物
 frontend/dist/
 
+# Playwright 调试产物
+frontend/.playwright-cli/
+frontend/output/
+
 # 日志
 *.log

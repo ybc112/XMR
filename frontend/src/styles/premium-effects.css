@@ -1,0 +1,389 @@
+/* =========================================================
+   Premium Tech Effects — 高端科技感增强层
+   在 dark-tech-theme.css / mobile.css 之上叠加，
+   避免覆盖已有 ::before/::after，专注全局与独立元素
+   ========================================================= */
+
+/* ---------------- 全局动态背景 ---------------- */
+.app-layout {
+  position: relative;
+}
+
+.app-layout::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 107, 53, 0.10) 0%, transparent 35%),
+    radial-gradient(circle at 80% 20%, rgba(255, 138, 92, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 60% 80%, rgba(255, 69, 53, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 30% 70%, rgba(255, 107, 53, 0.06) 0%, transparent 28%);
+  animation: orbFloat 18s ease-in-out infinite alternate;
+}
+
+@keyframes orbFloat {
+  0% {
+    opacity: 0.8;
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    opacity: 1;
+    transform: translate(2%, -1%) scale(1.03);
+  }
+  66% {
+    opacity: 0.9;
+    transform: translate(-1%, 2%) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-2%, -1%) scale(1.04);
+  }
+}
+
+/* 细腻科技网格 */
+.tech-grid-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 107, 53, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 53, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,0,0,0.6), transparent);
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,0,0,0.6), transparent);
+  animation: gridPulse 12s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* ---------------- 标题与文字特效 ---------------- */
+.page-title {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #fff4ef 35%,
+    var(--color-gold-light) 65%,
+    var(--color-gold) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 12px rgba(255, 107, 53, 0.12));
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-gold) 0%,
+    #ffd9c4 25%,
+    #ffffff 50%,
+    #ffd9c4 75%,
+    var(--color-gold) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 3.5s linear infinite;
+}
+
+@keyframes textShimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* ---------------- 卡片悬浮与抬升 ---------------- */
+.card,
+.stat-card,
+.total-value-card,
+.welcome-banner,
+.exchange-price-banner,
+.form-section,
+.mobile-menu-item,
+.mobile-quick-stat {
+  transform-style: preserve-3d;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.8, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 0.8, 0.3, 1),
+    border-color 0.35s ease;
+}
+
+.card:hover,
+.stat-card:hover,
+.exchange-price-banner:hover,
+.form-section:hover,
+.mobile-menu-item:hover,
+.mobile-quick-stat:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 20px 56px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(255, 107, 53, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 普通卡片扫光（不覆盖 featured 卡片的 accent 线） */
+.card:not(.card-featured):not(.card-featured-top) {
+  position: relative;
+  overflow: hidden;
+}
+
+.card:not(.card-featured):not(.card-featured-top)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 45%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.04) 55%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+  transition: left 0.8s ease;
+  z-index: 2;
+}
+
+.card:not(.card-featured):not(.card-featured-top):hover::before {
+  left: 150%;
+}
+
+/* ---------------- 按钮流光与脉冲 ---------------- */
+.btn-primary,
+.btn-accent {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 0.8, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-accent:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 12px 36px rgba(255, 107, 53, 0.45),
+    0 0 30px rgba(255, 107, 53, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-accent:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.btn-primary::before,
+.btn-accent::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 60%);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+
+.btn-primary:hover::before,
+.btn-accent:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 按钮持续扫光 */
+.btn-primary::after,
+.btn-accent::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: buttonShine 3.5s ease-in-out infinite;
+}
+
+@keyframes buttonShine {
+  0% { left: -100%; }
+  40% { left: 140%; }
+  100% { left: 140%; }
+}
+
+/* ---------------- 统计卡片增强 ---------------- */
+.stat-card {
+  overflow: hidden;
+}
+
+.stat-icon {
+  position: relative;
+  z-index: 2;
+  animation: iconFloat 4s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.stat-value {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 0 24px rgba(255, 107, 53, 0.2);
+}
+
+/* ---------------- 进度条流光 ---------------- */
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: progressShine 2s linear infinite;
+}
+
+@keyframes progressShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* ---------------- 徽章脉冲 ---------------- */
+.level-badge,
+.badge-gold {
+  position: relative;
+}
+
+.level-badge::before,
+.badge-gold::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-light));
+  opacity: 0.4;
+  filter: blur(8px);
+  animation: badgePulse 2.5s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+/* ---------------- 聊天 FAB 增强 ---------------- */
+.chat-fab {
+  position: relative;
+}
+
+.chat-fab::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.25), transparent 70%);
+  animation: fabRipple 2.5s ease-out infinite;
+  z-index: -1;
+}
+
+@keyframes fabRipple {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* ---------------- 输入框聚焦光晕 ---------------- */
+.input-wrapper:focus-within,
+.exchange-input-wrapper:focus-within,
+.exchange-output-wrapper:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(255, 107, 53, 0.12),
+    0 0 20px rgba(255, 107, 53, 0.15);
+}
+
+/* ---------------- 加载 shimmer ---------------- */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ---------------- Tab 激活指示器 ---------------- */
+.tab-active {
+  position: relative;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  border-radius: 1px;
+  animation: tabGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes tabGlow {
+  0% { opacity: 0.6; box-shadow: 0 0 6px rgba(255, 107, 53, 0.3); }
+  100% { opacity: 1; box-shadow: 0 0 12px rgba(255, 107, 53, 0.6); }
+}
+
+/* ---------------- 响应式减弱 ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .app-layout::after,
+  .tech-grid-overlay,
+  .text-shimmer,
+  .btn-primary::after,
+  .btn-accent::after,
+  .progress-fill::after,
+  .level-badge::before,
+  .badge-gold::before,
+  .chat-fab::before,
+  .stat-icon,
+  .tab-active::after {
+    animation: none !important;
+  }
+}

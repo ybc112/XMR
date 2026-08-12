@@ -9,7 +9,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatNumber, formatAddress, formatEther } from '../../utils/format.js'
+import { formatNumber, formatAddress, formatEther, safeParseFloat } from '../../utils/format.js'
 
 export default function Assets() {
   const navigate = useNavigate()
@@ -36,7 +36,6 @@ export default function Assets() {
 
   const loadData = useCallback(async () => {
     if (!account) return
-    setLoading(true)
     try {
       const [info, contractStats] = await Promise.all([
         getUserInfo(account),
@@ -113,9 +112,9 @@ export default function Assets() {
 
   const calculateTotalValue = () => {
     if (!userInfo) return 0
-    const usdtValue = parseFloat(formatEther(userInfo.pendingUSDT))
-    const xmrValue = parseFloat(formatEther(userInfo.pendingXMR)) * parseFloat(stats ? formatEther(stats.xmrPrice) : '0')
-    return usdtValue + xmrValue
+    const usdtValue = safeParseFloat(formatEther(userInfo.pendingUSDT))
+    const xmrValue = safeParseFloat(formatEther(userInfo.pendingXMR)) * safeParseFloat(stats ? formatEther(stats.xmrPrice) : '0')
+    return Number.isFinite(usdtValue + xmrValue) ? usdtValue + xmrValue : 0
   }
 
   if (!isConnected) {

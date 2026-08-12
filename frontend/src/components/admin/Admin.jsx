@@ -100,7 +100,6 @@ export default function Admin() {
   }, [required, getTransactionCount, getOwners, isOwner, account, getTransaction])
 
   const loadData = useCallback(async () => {
-    setLoading(true)
     try {
       const contractStats = await getContractStats()
       setStats(contractStats)

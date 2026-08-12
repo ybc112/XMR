@@ -21,7 +21,6 @@ export default function Exchange() {
 
   const loadData = useCallback(async () => {
     if (!account) return
-    setLoading(true)
     try {
       const info = await getUserInfo(account)
       setUserInfo(info)

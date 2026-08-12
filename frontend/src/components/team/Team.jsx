@@ -8,7 +8,7 @@ import Tabs from '../common/Tabs.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatAddress, formatEther, getLevelName } from '../../utils/format.js'
+import { formatNumber, formatAddress, formatEther, getLevelName, safeNumber } from '../../utils/format.js'
 import { LEVEL_INFO, GENERATION_RATES } from '../../utils/constants.js'
 
 const MAX_NETWORK_DEPTH = 4
@@ -34,7 +34,6 @@ export default function Team() {
 
   const loadData = useCallback(async () => {
     if (!account) return
-    setLoading(true)
     try {
       const info = await getUserInfo(account)
       setUserInfo(info)
@@ -158,7 +157,7 @@ export default function Team() {
   const currentLevelInfo = LEVEL_INFO[currentLevel] || LEVEL_INFO[0]
   const nextLevelInfo = LEVEL_INFO[currentLevel + 1]
 
-  const teamVolumeNum = Number(formatEther(teamVolume))
+  const teamVolumeNum = safeNumber(formatEther(teamVolume))
   const nextVolumeReq = nextLevelInfo ? nextLevelInfo.volumeReq : currentLevelInfo.volumeReq
   const levelProgressMax = nextLevelInfo ? nextVolumeReq : Math.max(currentLevelInfo.volumeReq, 1)
 
@@ -337,7 +336,7 @@ export default function Team() {
               />
               <ProgressBar
                 label="小区业绩进度"
-                value={Number(formatEther(subAreaVolume)).toFixed(4)}
+                value={safeNumber(formatEther(subAreaVolume)).toFixed(4)}
                 max={nextLevelInfo.subAreaReq.toFixed(4)}
                 suffix="USDT"
                 variant="green"

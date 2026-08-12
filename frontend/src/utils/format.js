@@ -1,6 +1,37 @@
 import { ethers } from 'ethers'
 
 /**
+ * 安全解析数字：对 NaN/Infinity/非法字符串返回 0
+ */
+export function safeParseFloat(value, defaultValue = 0) {
+  if (value === undefined || value === null || value === '') return defaultValue
+  try {
+    const num = typeof value === 'bigint'
+      ? parseFloat(formatEther(value))
+      : parseFloat(String(value).toString().replace(/,/g, ''))
+    return Number.isFinite(num) ? num : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+/**
+ * 安全转 Number：对 BigInt 使用 formatEther，对非法值返回 0
+ */
+export function safeNumber(value, defaultValue = 0) {
+  if (value === undefined || value === null || value === '') return defaultValue
+  try {
+    if (typeof value === 'bigint') {
+      return parseFloat(formatEther(value))
+    }
+    const num = Number(value)
+    return Number.isFinite(num) ? num : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+/**
  * 格式化地址：显示前6位...后4位
  */
 export function formatAddress(address) {

@@ -7,7 +7,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl } from '../../utils/format.js'
+import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber } from '../../utils/format.js'
 
 export default function Dashboard() {
   const { account, isConnected, connectWallet } = useWeb3()
@@ -31,7 +31,6 @@ export default function Dashboard() {
   const [claiming, setClaiming] = useState(false)
 
   const loadData = useCallback(async () => {
-    setLoading(true)
     setEarningsLoading(true)
     try {
       const contractStats = await getContractStats()
@@ -75,8 +74,8 @@ export default function Dashboard() {
     }
   }
 
-  const progressValue = userInfo ? Number(formatEther(userInfo.totalEarned)) : 0
-  const progressMax = userInfo && Number(userInfo.exitLimit) > 0 ? Number(formatEther(userInfo.exitLimit)) : 1
+  const progressValue = userInfo ? safeNumber(formatEther(userInfo.totalEarned)) : 0
+  const progressMax = userInfo && userInfo.exitLimit > 0n ? safeNumber(formatEther(userInfo.exitLimit)) : 1
 
   const getEarningLabel = (event) => {
     switch (event.type) {

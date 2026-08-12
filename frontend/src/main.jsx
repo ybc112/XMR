@@ -4,16 +4,19 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { Web3Provider } from './contexts/Web3Context.jsx'
 import { ToastProvider } from './components/common/Toast.jsx'
+import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 import './styles/global.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ToastProvider>
-        <Web3Provider>
-          <App />
-        </Web3Provider>
-      </ToastProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ToastProvider>
+          <Web3Provider>
+            <App />
+          </Web3Provider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 )

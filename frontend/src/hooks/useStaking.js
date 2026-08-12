@@ -3,6 +3,7 @@ import { useWeb3 } from '../contexts/Web3Context.jsx'
 import { useContracts } from './useContracts.js'
 import { ethers } from 'ethers'
 import { CONTRACT_ADDRESSES } from '../config/contracts.js'
+import { STAKING_DAPP_ABI } from '../config/abis.js'
 
 export function useStaking() {
   const { account, isConnected, getReadOnlyProvider } = useWeb3()
@@ -14,20 +15,17 @@ export function useStaking() {
 
   const getReadOnlyStakingContract = useCallback(() => {
     const readOnlyProvider = getReadOnlyProvider()
-    return new ethers.Contract(
-      CONTRACT_ADDRESSES.StakingDApp,
-      [
-        'function getUserInfo(address) view returns (tuple(address,uint256,uint256,uint256,bool,bool,bool,uint8,uint256,uint256,uint256,uint256,uint256,uint256))',
-        'function getContractStats() view returns (tuple(uint256,uint256,uint256,uint256,uint256,uint256,bool,uint256,uint256))',
-        'function getDirectReferrals(address) view returns (address[])',
-        'function getDirectReferralCount(address) view returns (uint256)',
-        'function getRemainingExitLimit(address) view returns (uint256)',
-        'function getSubAreaVolume(address) view returns (uint256)',
-        'function estimateStaticReward(address) view returns (uint256,uint256)',
-        'function getLevelInfo(uint8) view returns (uint256,uint256,uint256)'
-      ],
-      readOnlyProvider
-    )
+    if (!readOnlyProvider) return null
+    try {
+      return new ethers.Contract(
+        CONTRACT_ADDRESSES.StakingDApp,
+        STAKING_DAPP_ABI,
+        readOnlyProvider
+      )
+    } catch (err) {
+      console.error('创建只读质押合约失败:', err)
+      return null
+    }
   }, [getReadOnlyProvider])
 
   const register = useCallback(async (referrer) => {
@@ -99,7 +97,7 @@ export function useStaking() {
   }, [isConnected, stakingContract])
 
   const getUserInfo = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return null
     try {
       const userInfo = await contract.getUserInfo(address)
@@ -108,10 +106,10 @@ export function useStaking() {
       console.error('获取用户信息失败:', err)
       return null
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getContractStats = useCallback(async () => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return null
     try {
       const stats = await contract.getContractStats()
@@ -120,10 +118,10 @@ export function useStaking() {
       console.error('获取合约统计失败:', err)
       return null
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getDirectReferrals = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return []
     try {
       const referrals = await contract.getDirectReferrals(address)
@@ -132,10 +130,10 @@ export function useStaking() {
       console.error('获取直推列表失败:', err)
       return []
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getDirectReferralCount = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return 0
     try {
       const count = await contract.getDirectReferralCount(address)
@@ -144,10 +142,10 @@ export function useStaking() {
       console.error('获取直推数量失败:', err)
       return 0
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getRemainingExitLimit = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return 0n
     try {
       const limit = await contract.getRemainingExitLimit(address)
@@ -156,10 +154,10 @@ export function useStaking() {
       console.error('获取剩余出局额度失败:', err)
       return 0n
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getSubAreaVolume = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return 0n
     try {
       const volume = await contract.getSubAreaVolume(address)
@@ -168,10 +166,10 @@ export function useStaking() {
       console.error('获取小区业绩失败:', err)
       return 0n
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const estimateStaticReward = useCallback(async (address) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return { usdtValue: 0n, xmrValue: 0n }
     try {
       const [usdtValue, xmrValue] = await contract.estimateStaticReward(address)
@@ -180,10 +178,10 @@ export function useStaking() {
       console.error('预估静态收益失败:', err)
       return { usdtValue: 0n, xmrValue: 0n }
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getLevelInfo = useCallback(async (level) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return null
     try {
       const info = await contract.getLevelInfo(level)
@@ -192,10 +190,10 @@ export function useStaking() {
       console.error('获取等级信息失败:', err)
       return null
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const getRecentEarnings = useCallback(async (address, limit = 8) => {
-    const contract = stakingContract(false) || getReadOnlyStakingContract()
+    const contract = getReadOnlyStakingContract()
     if (!contract) return []
     try {
       const filters = [
@@ -226,7 +224,7 @@ export function useStaking() {
       console.error('获取最近收益失败:', err)
       return []
     }
-  }, [stakingContract, getReadOnlyStakingContract])
+  }, [getReadOnlyStakingContract])
 
   const setXMRPrice = useCallback(async (price) => {
     if (!isConnected) throw new Error('请先连接钱包')

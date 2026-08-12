@@ -8,7 +8,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useContracts } from '../../hooks/useContracts.js'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatEther, getLevelName, formatAddress } from '../../utils/format.js'
+import { formatNumber, formatEther, getLevelName, formatAddress, safeNumber } from '../../utils/format.js'
 import { ethers } from 'ethers'
 
 export default function Staking() {
@@ -34,7 +34,6 @@ export default function Staking() {
 
   const loadData = useCallback(async () => {
     if (!account) return
-    setLoading(true)
     try {
       const [info, balance, est, contractStats] = await Promise.all([
         getUserInfo(account),
@@ -126,12 +125,14 @@ export default function Staking() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const progressValue = userInfo ? Number(formatEther(userInfo.totalEarned)) : 0
-  const progressMax = userInfo && Number(userInfo.exitLimit) > 0 ? Number(formatEther(userInfo.exitLimit)) : 1
+  const progressValue = userInfo ? safeNumber(formatEther(userInfo.totalEarned)) : 0
+  const progressMax = userInfo && userInfo.exitLimit > 0n ? safeNumber(formatEther(userInfo.exitLimit)) : 1
 
   const estimateExitMultiplier = () => {
     if (!userInfo || userInfo.personalAmount === 0n) return 3
-    return Number(formatEther(userInfo.exitLimit)) / Number(formatEther(userInfo.personalAmount))
+    const exitLimit = safeNumber(formatEther(userInfo.exitLimit))
+    const personal = safeNumber(formatEther(userInfo.personalAmount))
+    return personal > 0 ? exitLimit / personal : 3
   }
 
   const estimatedExitLimit = investAmount && parseFloat(investAmount) > 0

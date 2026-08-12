@@ -15,10 +15,11 @@ export function Web3Provider({ children }) {
   const [signer, setSigner] = useState(null)
   const [error, setError] = useState('')
   const initializedRef = useRef(false)
+  const readOnlyProviderRef = useRef(null)
 
   // 检查是否安装了 MetaMask
   const checkIfWalletInstalled = useCallback(() => {
-    return typeof window.ethereum !== 'undefined'
+    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask
   }, [])
 
   // 切换到 BSC 链
@@ -125,17 +126,26 @@ export function Web3Provider({ children }) {
 
     // 检查是否已经连接
     const checkConnection = async () => {
+      if (!checkIfWalletInstalled()) return
       try {
         const accounts = await window.ethereum.request({ method: 'eth_accounts' })
         if (accounts.length > 0) {
           setAccount(accounts[0])
           setIsConnected(true)
           const browserProvider = new ethers.BrowserProvider(window.ethereum)
-          const browserSigner = await browserProvider.getSigner()
+          let browserSigner = null
+          try {
+            browserSigner = await browserProvider.getSigner()
+          } catch {
+            browserSigner = null
+          }
           setProvider(browserProvider)
           setSigner(browserSigner)
           const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
           setChainId(currentChainId)
+          if (browserSigner) {
+            await checkAdminStatus(accounts[0], browserProvider)
+          }
         }
       } catch (err) {
         console.error('检查连接状态失败:', err)
@@ -210,7 +220,13 @@ export function Web3Provider({ children }) {
 
   // 只读 provider (用于不连接钱包时查询数据)
   const getReadOnlyProvider = useCallback(() => {
-    return new ethers.JsonRpcProvider(NETWORK_CONFIG.rpcUrls[0])
+    if (readOnlyProviderRef.current) return readOnlyProviderRef.current
+    const provider = new ethers.JsonRpcProvider(NETWORK_CONFIG.rpcUrls[0], {
+      name: NETWORK_CONFIG.chainName,
+      chainId: parseInt(NETWORK_CONFIG.chainId, 16)
+    })
+    readOnlyProviderRef.current = provider
+    return provider
   }, [])
 
   const value = {

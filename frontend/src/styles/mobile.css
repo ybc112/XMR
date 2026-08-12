@@ -1,203 +1,241 @@
 /* =========================================================
-   手机端专属样式：橙红科技风 / 门罗币 M 主题
+   手机端专属样式：明亮高级感 + 门罗橙科技点缀
    仅在 <= 768px 生效，桌面端完全不受影响
    ========================================================= */
 
 @media (max-width: 768px) {
   :root {
-    /* 手机端主题色：门罗橙 + 科技深蓝 */
-    --color-mono-orange: #FF6B35;
-    --color-mono-orange-light: #FF8F5D;
-    --color-mono-red: #FF3B30;
-    --color-tech-dark: #080B14;
-    --color-tech-panel: #0F1524;
-    --color-tech-panel-elevated: #161E32;
-    --color-tech-border: rgba(255, 107, 53, 0.18);
-    --color-tech-glow: rgba(255, 107, 53, 0.35);
-    --color-text-main: #F1F5F9;
-    --color-text-sub: #94A3B8;
-    --color-text-muted: #64748B;
+    /* 明亮基底 */
+    --m-bg: #F7F7F5;
+    --m-surface: #FFFFFF;
+    --m-surface-elevated: #FAFAF8;
+    --m-border: rgba(15, 23, 42, 0.06);
+    --m-border-strong: rgba(15, 23, 42, 0.10);
+    --m-text: #0F172A;
+    --m-text-secondary: #64748B;
+    --m-text-muted: #94A3B8;
+    --m-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+    --m-shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.10);
+
+    /* 门罗橙为主点缀 */
+    --m-orange: #FF6B35;
+    --m-orange-light: #FF8A5C;
+    --m-orange-soft: #FFF1EB;
+    --m-red: #FF453A;
+
+    /* 功能图标彩色 */
+    --m-blue: #3B82F6;
+    --m-blue-soft: #EFF6FF;
+    --m-green: #22C55E;
+    --m-green-soft: #F0FDF4;
+    --m-purple: #8B5CF6;
+    --m-purple-soft: #F5F3FF;
+    --m-amber: #F59E0B;
+    --m-amber-soft: #FFFBEB;
+    --m-teal: #14B8A6;
+    --m-teal-soft: #F0FDFA;
   }
 
   html, body {
-    background: var(--color-tech-dark);
-    color: var(--color-text-main);
+    background: var(--m-bg);
+    color: var(--m-text);
   }
 
   .tech-background {
-    background: var(--color-tech-dark);
+    background: var(--m-bg);
   }
 
   .bg-noise {
-    opacity: 0.05;
+    opacity: 0.04;
   }
 
   .bg-glow-top {
-    background: radial-gradient(ellipse 100% 100% at 50% 0%, rgba(255, 107, 53, 0.18), rgba(255, 107, 53, 0.04) 40%, transparent 70%);
-    filter: blur(24px);
+    background: radial-gradient(ellipse 100% 100% at 50% 0%, rgba(255, 107, 53, 0.12), rgba(255, 107, 53, 0.03) 45%, transparent 75%);
+    filter: blur(30px);
   }
 
   .bg-glow-bottom {
-    background: radial-gradient(circle, rgba(255, 59, 48, 0.10), transparent 65%);
+    background: radial-gradient(circle at 80% 100%, rgba(255, 107, 53, 0.08), transparent 60%);
   }
 
   .bg-particles::before {
     background-image:
-      radial-gradient(circle at 12% 22%, rgba(255, 107, 53, 0.22) 1.5px, transparent 2.5px),
-      radial-gradient(circle at 78% 64%, rgba(255, 143, 93, 0.16) 1px, transparent 2px),
-      radial-gradient(circle at 35% 82%, rgba(255, 107, 53, 0.14) 2px, transparent 3px),
-      radial-gradient(circle at 88% 12%, rgba(255, 143, 93, 0.18) 1px, transparent 2px);
+      radial-gradient(circle at 15% 25%, rgba(255, 107, 53, 0.14) 1.5px, transparent 2.5px),
+      radial-gradient(circle at 75% 65%, rgba(255, 138, 92, 0.10) 1px, transparent 2px);
+    background-size: 240px 240px;
   }
 
   .bg-particles::after {
     background-image:
-      radial-gradient(circle at 60% 40%, rgba(255, 107, 53, 0.16) 1px, transparent 2px),
-      radial-gradient(circle at 25% 55%, rgba(255, 143, 93, 0.14) 1.5px, transparent 2.5px),
-      radial-gradient(circle at 92% 78%, rgba(255, 107, 53, 0.12) 1px, transparent 2px);
+      radial-gradient(circle at 55% 45%, rgba(255, 107, 53, 0.10) 1px, transparent 2px),
+      radial-gradient(circle at 30% 80%, rgba(255, 138, 92, 0.08) 1.5px, transparent 2.5px);
+    background-size: 340px 340px;
   }
 
-  /* 顶部导航：简化，只保留 Logo + 钱包 */
+  /* 顶部导航：玻璃拟态白色 */
   .navbar {
-    background: rgba(8, 11, 20, 0.85);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255, 107, 53, 0.12);
-    height: 60px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--m-border);
+    height: 58px;
   }
 
   .navbar-container {
     padding: 0 16px;
-    height: 60px;
+    height: 58px;
   }
 
   .navbar-logo .logo-icon svg path {
-    stroke: var(--color-mono-orange);
+    stroke: var(--m-orange);
   }
 
   .logo-text {
-    color: #fff;
+    color: var(--m-text);
   }
 
   .logo-text span {
-    color: var(--color-mono-orange);
+    color: var(--m-orange);
   }
 
   .navbar-mobile-toggle {
-    color: var(--color-text-main);
+    color: var(--m-text);
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--m-surface-elevated);
+    border: 1px solid var(--m-border);
   }
 
   .wallet-pill {
-    background: rgba(255, 107, 53, 0.12);
-    border: 1px solid rgba(255, 107, 53, 0.25);
-    color: var(--color-mono-orange-light);
+    background: var(--m-orange-soft);
+    border: 1px solid rgba(255, 107, 53, 0.18);
+    color: var(--m-orange);
     font-size: 12px;
-    padding: 6px 12px;
+    padding: 7px 14px;
     border-radius: 20px;
+    font-weight: 600;
   }
 
   .wallet-dot {
-    background: var(--color-mono-orange);
-    box-shadow: 0 0 8px var(--color-mono-orange);
+    background: var(--m-orange);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
   }
 
   .navbar-mobile {
-    background: rgba(15, 21, 36, 0.98);
-    border-top: 1px solid var(--color-tech-border);
-    padding: 8px 16px 16px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--m-border);
+    padding: 10px 16px 18px;
   }
 
   .nav-link-mobile {
-    color: var(--color-text-sub);
+    color: var(--m-text-secondary);
     padding: 14px 16px;
-    border-radius: 12px;
+    border-radius: 14px;
     margin-bottom: 6px;
     font-weight: 500;
+    font-size: 15px;
   }
 
   .nav-link-mobile.nav-link-active {
-    background: rgba(255, 107, 53, 0.12);
-    color: var(--color-mono-orange-light);
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
+    font-weight: 600;
   }
 
-  /* 主内容区域：给底部导航留空间 */
+  /* 主内容区域 */
   .main-content {
-    padding: 76px 16px 92px;
+    padding: 74px 16px 92px;
     min-height: 100vh;
   }
 
-  /* 页面标题 */
   .page-title {
-    color: #fff;
-    font-size: 22px;
-    font-weight: 700;
+    color: var(--m-text);
+    font-size: 24px;
+    font-weight: 800;
     margin-bottom: 4px;
+    letter-spacing: -0.3px;
   }
 
   .page-subtitle {
-    color: var(--color-text-sub);
+    color: var(--m-text-secondary);
     font-size: 13px;
     margin-bottom: 20px;
   }
 
-  /* 卡片：深色科技面板 */
+  /* 卡片：白色柔影 */
   .card {
-    background: var(--color-tech-panel);
-    border: 1px solid var(--color-tech-border);
-    border-radius: 20px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 22px;
+    box-shadow: var(--m-shadow);
   }
 
   .card-title {
-    color: #fff;
+    color: var(--m-text);
+    font-size: 16px;
+    font-weight: 700;
   }
 
   .card-subtitle {
-    color: var(--color-text-sub);
+    color: var(--m-text-secondary);
+    font-size: 12px;
   }
 
-  /* 总资产卡片：渐变 + 动态扫光 */
+  .card-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--m-border);
+  }
+
+  .card-body {
+    padding: 18px 20px;
+  }
+
+  /* 总资产 Hero 卡片 */
   .total-value-card {
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.22), rgba(255, 59, 48, 0.16));
-    border: 1px solid rgba(255, 107, 53, 0.28);
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 28px;
+    box-shadow: var(--m-shadow-lg);
     position: relative;
     overflow: hidden;
-    padding: 24px;
+    padding: 26px 22px 22px;
     margin-bottom: 20px;
   }
 
-  .total-value-card::before {
+  .total-value-card::after {
     content: '';
     position: absolute;
     top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-    animation: mobileShimmer 3.5s ease-in-out infinite;
-  }
-
-  @keyframes mobileShimmer {
-    0% { left: -100%; }
-    100% { left: 200%; }
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--m-orange), var(--m-red));
   }
 
   .total-value-label {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--m-text-secondary);
     font-size: 13px;
+    font-weight: 500;
     margin-bottom: 8px;
   }
 
   .total-value-amount {
-    color: #fff;
-    font-size: 34px;
+    color: var(--m-text);
+    font-size: 36px;
     font-weight: 800;
-    letter-spacing: -0.5px;
-    text-shadow: 0 2px 16px rgba(255, 107, 53, 0.35);
+    letter-spacing: -0.8px;
+    line-height: 1.1;
   }
 
   .total-value-breakdown {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--m-border);
   }
 
   /* 快捷数据条 */
@@ -205,16 +243,15 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-bottom: 20px;
   }
 
   .mobile-quick-stat {
-    background: var(--color-tech-panel);
-    border: 1px solid var(--color-tech-border);
-    border-radius: 16px;
-    padding: 14px 8px;
+    background: var(--m-surface-elevated);
+    border: 1px solid var(--m-border);
+    border-radius: 18px;
+    padding: 14px 6px;
     text-align: center;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .mobile-quick-stat:active {
@@ -222,46 +259,47 @@
   }
 
   .mobile-quick-stat-icon {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     margin: 0 auto 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    background: rgba(255, 107, 53, 0.12);
-    color: var(--color-mono-orange-light);
+    border-radius: 12px;
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
   }
 
   .mobile-quick-stat-value {
-    color: #fff;
+    color: var(--m-text);
     font-size: 15px;
     font-weight: 700;
     line-height: 1.2;
   }
 
   .mobile-quick-stat-label {
-    color: var(--color-text-muted);
+    color: var(--m-text-muted);
     font-size: 11px;
     margin-top: 4px;
+    font-weight: 500;
   }
 
-  /* 功能宫格入口 */
+  /* 功能宫格 */
   .mobile-menu-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   .mobile-menu-item {
-    background: var(--color-tech-panel);
-    border: 1px solid var(--color-tech-border);
-    border-radius: 20px;
-    padding: 20px 16px;
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 22px;
+    padding: 18px 8px 16px;
     text-align: center;
     text-decoration: none;
-    color: var(--color-text-main);
+    color: var(--m-text);
     position: relative;
     overflow: hidden;
     transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -269,66 +307,87 @@
     flex-direction: column;
     align-items: center;
     gap: 10px;
-  }
-
-  .mobile-menu-item::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.10), transparent 60%);
-    opacity: 0;
-    transition: opacity 0.25s ease;
+    box-shadow: var(--m-shadow);
   }
 
   .mobile-menu-item:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
   }
 
   .mobile-menu-item.active,
   .mobile-menu-item:hover {
-    border-color: rgba(255, 107, 53, 0.45);
-    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.12);
+    border-color: rgba(255, 107, 53, 0.25);
+    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.10);
   }
 
-  .mobile-menu-item.active::before,
-  .mobile-menu-item:hover::before {
-    opacity: 1;
+  .mobile-menu-item:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .mobile-menu-item:disabled:active {
+    transform: none;
   }
 
   .mobile-menu-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
+    width: 50px;
+    height: 50px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(255, 59, 48, 0.12));
-    color: var(--color-mono-orange-light);
     font-size: 22px;
     position: relative;
     z-index: 1;
-    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
   }
 
   .mobile-menu-label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: #fff;
+    color: var(--m-text);
     position: relative;
     z-index: 1;
   }
 
   .mobile-menu-desc {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    position: relative;
-    z-index: 1;
+    display: none;
+  }
+
+  /* 宫格图标配色 */
+  .mobile-menu-item:nth-child(1) .mobile-menu-icon {
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
+  }
+
+  .mobile-menu-item:nth-child(2) .mobile-menu-icon {
+    background: var(--m-blue-soft);
+    color: var(--m-blue);
+  }
+
+  .mobile-menu-item:nth-child(3) .mobile-menu-icon {
+    background: var(--m-purple-soft);
+    color: var(--m-purple);
+  }
+
+  .mobile-menu-item:nth-child(4) .mobile-menu-icon {
+    background: var(--m-green-soft);
+    color: var(--m-green);
+  }
+
+  .mobile-menu-item:nth-child(5) .mobile-menu-icon {
+    background: var(--m-amber-soft);
+    color: var(--m-amber);
+  }
+
+  .mobile-menu-item:nth-child(6) .mobile-menu-icon {
+    background: var(--m-teal-soft);
+    color: var(--m-teal);
   }
 
   /* 最近收益区 */
   .mobile-section-title {
-    color: #fff;
-    font-size: 16px;
+    color: var(--m-text);
+    font-size: 17px;
     font-weight: 700;
     margin: 24px 0 12px;
     display: flex;
@@ -337,32 +396,15 @@
   }
 
   .mobile-earning-item {
-    background: var(--color-tech-panel);
-    border: 1px solid var(--color-tech-border);
-    border-radius: 16px;
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 18px;
     padding: 14px 16px;
     margin-bottom: 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-
-  .mobile-earning-type {
-    font-size: 13px;
-    color: #fff;
-    font-weight: 500;
-  }
-
-  .mobile-earning-time {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    margin-top: 2px;
-  }
-
-  .mobile-earning-amount {
-    color: var(--color-mono-orange-light);
-    font-weight: 700;
-    font-size: 14px;
+    box-shadow: var(--m-shadow);
   }
 
   /* 底部 Tab 导航 */
@@ -371,15 +413,17 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 72px;
-    background: rgba(8, 11, 20, 0.92);
-    backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 107, 53, 0.15);
+    height: 70px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--m-border);
     display: flex;
     align-items: center;
     justify-content: space-around;
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.04);
   }
 
   .mobile-bottom-tab {
@@ -390,7 +434,7 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    color: var(--color-text-muted);
+    color: var(--m-text-muted);
     text-decoration: none;
     font-size: 11px;
     font-weight: 500;
@@ -399,85 +443,83 @@
   }
 
   .mobile-bottom-tab.active {
-    color: var(--color-mono-orange-light);
-  }
-
-  .mobile-bottom-tab.active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 32px;
-    height: 3px;
-    background: var(--color-mono-orange);
-    border-radius: 0 0 4px 4px;
-    box-shadow: 0 0 10px var(--color-mono-orange);
+    color: var(--m-orange);
   }
 
   .mobile-bottom-tab svg {
     width: 24px;
     height: 24px;
+    stroke-width: 2;
   }
 
   /* 隐藏桌面端的页脚和聊天按钮在手机上的冲突 */
   .app-footer {
     padding-bottom: 96px;
-    color: var(--color-text-muted);
+    color: var(--m-text-muted);
     font-size: 12px;
   }
 
   .chat-fab {
     bottom: 88px;
     right: 16px;
-    background: var(--color-mono-orange);
-    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
+    background: var(--m-orange);
+    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.32);
   }
 
-  /* 按钮：橙红渐变 */
+  /* 按钮 */
   .btn-primary {
-    background: linear-gradient(135deg, var(--color-mono-orange), var(--color-mono-red));
+    background: linear-gradient(135deg, var(--m-orange), #FF7A45);
     border: none;
     color: #fff;
-    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.25);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.25);
+    border-radius: 16px;
+    font-weight: 600;
   }
 
   .btn-primary:hover {
-    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.35);
+    box-shadow: 0 8px 28px rgba(255, 107, 53, 0.32);
     transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: var(--m-surface);
+    border: 1px solid var(--m-border-strong);
+    color: var(--m-text);
   }
 
   /* 进度条 */
   .progress-track {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.06);
   }
 
   .progress-fill {
-    background: linear-gradient(90deg, var(--color-mono-orange), var(--color-mono-red));
-    box-shadow: 0 0 12px rgba(255, 107, 53, 0.35);
+    background: linear-gradient(90deg, var(--m-orange), var(--m-red));
+    box-shadow: 0 0 12px rgba(255, 107, 53, 0.25);
   }
 
   /* Badge */
   .badge {
-    background: rgba(255, 107, 53, 0.15);
-    color: var(--color-mono-orange-light);
-    border: 1px solid rgba(255, 107, 53, 0.25);
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
+    border: 1px solid rgba(255, 107, 53, 0.15);
+    font-weight: 600;
   }
 
   /* 通用输入框 */
   input, select, textarea {
-    background: var(--color-tech-panel-elevated);
-    border-color: rgba(255, 107, 53, 0.18);
-    color: #fff;
+    background: var(--m-surface-elevated);
+    border-color: var(--m-border-strong);
+    color: var(--m-text);
+    border-radius: 14px;
   }
 
   input::placeholder {
-    color: var(--color-text-muted);
+    color: var(--m-text-muted);
   }
 
   input:focus, select:focus, textarea:focus {
-    border-color: var(--color-mono-orange);
-    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+    border-color: var(--m-orange);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.10);
   }
 
   /* 子页面在手机端也变成面板式 */
@@ -490,16 +532,202 @@
   }
 
   .form-section {
-    background: var(--color-tech-panel);
-    border-color: var(--color-tech-border);
+    background: var(--m-surface);
+    border-color: var(--m-border);
+    border-radius: 22px;
+    box-shadow: var(--m-shadow);
   }
 
   .welcome-banner {
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.14), rgba(255, 59, 48, 0.10));
-    border-color: rgba(255, 107, 53, 0.22);
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 22px;
+    box-shadow: var(--m-shadow);
   }
 
   .welcome-banner h2 {
-    color: #fff;
+    color: var(--m-text);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .welcome-banner p {
+    color: var(--m-text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* 出局警告 */
+  .exit-alert {
+    background: #FEF2F2;
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 20px;
+  }
+
+  .exit-alert-title {
+    color: var(--m-red);
+  }
+
+  /* 信息列表 */
+  .info-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--m-border);
+  }
+
+  .info-label {
+    color: var(--m-text-secondary);
+    font-size: 13px;
+  }
+
+  .info-value {
+    color: var(--m-text);
+    font-weight: 600;
+  }
+
+  .text-gold {
+    color: var(--m-orange);
+  }
+
+  /* Tab */
+  .tab-list {
+    background: var(--m-surface-elevated);
+    border-radius: 16px;
+    padding: 4px;
+    border: 1px solid var(--m-border);
+  }
+
+  .tab-item {
+    border-radius: 14px;
+    color: var(--m-text-secondary);
+    font-weight: 500;
+  }
+
+  .tab-item.active {
+    background: var(--m-surface);
+    color: var(--m-orange);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    font-weight: 600;
+  }
+
+  /* 团队统计 */
+  .team-stats-grid {
+    gap: 10px;
+  }
+
+  .team-stat-item {
+    background: var(--m-surface-elevated);
+    border: 1px solid var(--m-border);
+    border-radius: 16px;
+  }
+
+  .team-stat-value {
+    color: var(--m-text);
+  }
+
+  .team-stat-label {
+    color: var(--m-text-muted);
+  }
+
+  /* 最近收益列表 */
+  .earning-item {
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 16px;
+    box-shadow: var(--m-shadow);
+  }
+
+  .earning-item:hover {
+    border-color: rgba(255, 107, 53, 0.15);
+  }
+
+  .earning-title {
+    color: var(--m-text);
+  }
+
+  .earning-amount {
+    color: var(--m-orange);
+  }
+
+  .earning-icon {
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
+    border: none;
+  }
+
+  /* 加载 */
+  .page-loading {
+    color: var(--m-text-secondary);
+  }
+
+  .loading-spinner {
+    border-color: rgba(255, 107, 53, 0.15);
+    border-top-color: var(--m-orange);
+  }
+
+  /* 状态标签 */
+  .status-tag-success {
+    background: var(--m-green-soft);
+    color: var(--m-green);
+  }
+
+  .status-tag-warning {
+    background: var(--m-amber-soft);
+    color: #B45309;
+  }
+
+  .status-tag-danger {
+    background: #FEF2F2;
+    color: var(--m-red);
+  }
+
+  /* 空状态 */
+  .empty-state {
+    color: var(--m-text-muted);
+  }
+
+  .empty-state svg {
+    color: var(--m-text-muted);
+  }
+
+  /* 奖励展示 */
+  .reward-item {
+    background: var(--m-surface-elevated);
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .reward-label {
+    color: var(--m-text-secondary);
+    font-size: 12px;
+  }
+
+  .reward-value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  /* 网络节点 */
+  .network-node-content {
+    background: var(--m-surface);
+    border-color: var(--m-border);
+  }
+
+  .network-node-content:hover {
+    background: var(--m-surface);
+    border-color: rgba(255, 107, 53, 0.2);
+  }
+
+  .network-node-address {
+    color: var(--m-text);
+  }
+
+  .network-node-amount {
+    color: var(--m-orange);
+  }
+
+  .referral-index {
+    background: var(--m-orange-soft);
+    color: var(--m-orange);
+    border: none;
   }
 }

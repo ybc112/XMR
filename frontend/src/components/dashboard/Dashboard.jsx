@@ -205,6 +205,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        <div className="mobile-section-title">
+          <span>快捷功能</span>
+        </div>
         <div className="mobile-menu-grid">
           <NavLink to="/staking" className="mobile-menu-item">
             <div className="mobile-menu-icon">

@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+
+# 环境变量（含私钥/API密钥，切勿提交）
+.env
+backend/.env
+frontend/.env
+
+# Hardhat 构建产物
+artifacts/
+cache/
+
+# 测试覆盖率
+coverage/
+coverage.json
+
+# 前端构建产物
+frontend/dist/
+
+# 日志
+*.log

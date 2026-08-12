@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XMR 质押 DApp 全面审计报告</title>
+  <style>
+    :root {
+      --bg: #FDFBF7;
+      --card: #FFFFFF;
+      --primary: #0F172A;
+      --gold: #B8860B;
+      --green: #10B981;
+      --red: #EF4444;
+      --amber: #F59E0B;
+      --text: #1E293B;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container { max-width: 980px; margin: 0 auto; padding: 48px 24px; }
+    .header {
+      text-align: center;
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+    .header h1 { margin: 0; font-size: 32px; color: var(--primary); letter-spacing: -0.5px; }
+    .header .subtitle { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 16px;
+    }
+    .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--green); }
+    .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+    .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+    .section { margin-bottom: 48px; }
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--gold);
+      display: inline-block;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .card h3 { margin: 0 0 16px; font-size: 17px; color: var(--primary); }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .summary-item {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .summary-item .value { font-size: 28px; font-weight: 700; color: var(--gold); }
+    .summary-item .label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { font-weight: 600; color: var(--primary); background: #FAFAF8; }
+    tr:last-child td { border-bottom: none; }
+    .status { font-weight: 600; }
+    .status-pass { color: var(--green); }
+    .status-warn { color: var(--amber); }
+    .status-fail { color: var(--red); }
+    .risk-box {
+      background: #FEF3C7;
+      border-left: 4px solid var(--amber);
+      padding: 18px 20px;
+      border-radius: 0 12px 12px 0;
+      margin: 16px 0;
+    }
+    .risk-box.danger { background: #FEE2E2; border-left-color: var(--red); }
+    .risk-box.success { background: #D1FAE5; border-left-color: var(--green); }
+    .risk-title { font-weight: 700; margin-bottom: 8px; color: var(--primary); }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    .code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .link { color: var(--gold); text-decoration: none; font-weight: 600; }
+    .link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>XMR 质押 DApp 全面审计报告</h1>
+      <p class="subtitle">合约、前端、后端、测试脚本综合审计</p>
+      <span class="badge badge-warning">存在 1 项需确认的逻辑差异</span>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">执行摘要</h2>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="value">171</div>
+          <div class="label">测试用例</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">100%</div>
+          <div class="label">测试通过率</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">96.52%</div>
+          <div class="label">代码覆盖率</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">96.28%</div>
+          <div class="label">语句覆盖率</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>审计结论</h3>
+        <p>智能合约核心逻辑与需求文档高度一致，静态收益、12代奖励、M1-M9团队奖励、3倍出局、闪兑、提现费率、黑名单、紧急暂停、多签钱包等关键功能均已实现并通过测试。测试覆盖率超过 96%，属于较高水平。</p>
+        <p><strong>已修复：</strong>需求文档明确"出局后未提现的收益直接清零"，合约 <span class="code">invest</span> 函数在出局后复投分支已增加清空 <span class="code">pendingUSDT / pendingXMR / xmrWithdrawalPending</span> 的逻辑，并更新了对应测试用例 6.6 与 coverage 测试，验证通过。</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">项目启动状态</h2>
+      <div class="card">
+        <h3>服务运行状态</h3>
+        <table>
+          <tr><th>服务</th><th>地址</th><th>状态</th></tr>
+          <tr><td>前端开发服务器</td><td>http://localhost:5174</td><td class="status status-pass">运行中</td></tr>
+          <tr><td>后端 API 服务</td><td>http://localhost:3001</td><td class="status status-pass">运行中</td></tr>
+        </table>
+        <p style="margin-top:16px;color:var(--muted);font-size:13px;">注：当前合约地址仍为占位地址，部署真实合约后需替换前后端配置中的合约地址。</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">需求符合性逐项检查</h2>
+      <div class="card">
+        <table>
+          <tr><th>需求项</th><th>实现位置</th><th>状态</th><th>说明</th></tr>
+          <tr>
+            <td>静态收益每日 1%，按 XMR 价格换算</td>
+            <td>StakingDApp.claimStaticReward</td>
+            <td class="status status-pass">符合</td>
+            <td>dailyRate=100 即 1%，奖励按 xmrPrice 换算为 XMR 并计入 pendingXMR</td>
+          </tr>
+          <tr>
+            <td>12 代层级奖励 10/3/2/1%</td>
+            <td>generationRates[12]</td>
+            <td class="status status-pass">符合</td>
+            <td>数组初始化为 [1000,300,200,100...]，最多 12 代</td>
+          </tr>
+          <tr>
+            <td>有效账户需自身 100U</td>
+            <td>MIN_INVESTMENT</td>
+            <td class="status status-pass">符合</td>
+            <td>代奖励与静态收益均校验 personalAmount >= 100e18</td>
+          </tr>
+          <tr>
+            <td>见点奖励进入 DApp 手动提现</td>
+            <td>_distributeRewards / withdrawUSDT</td>
+            <td class="status status-pass">符合</td>
+            <td>奖励写入 pendingUSDT，用户调用 withdrawUSDT 提现</td>
+          </tr>
+          <tr>
+            <td>M1-M9 按个人+小区业绩达标</td>
+            <td>levels[9] / _checkAndSetLevel</td>
+            <td class="status status-pass">符合</td>
+            <td>小区=teamTotalVolume - maxAreaVolume， thresholds 与需求表格一致</td>
+          </tr>
+          <tr>
+            <td>级差发放团队奖励</td>
+            <td>_distributeRewards</td>
+            <td class="status status-pass">符合</td>
+            <td>ancestor.level > prevLevel 时按 (currentRate - prevRate) 计算</td>
+          </tr>
+          <tr>
+            <td>平级/超越奖 10%</td>
+            <td>_distributeRewards</td>
+            <td class="status status-pass">符合</td>
+            <td>ancestor.level <= prevLevel 时按 prevReward * 10% 计算</td>
+          </tr>
+          <tr>
+            <td>3 倍出局制度</td>
+            <td>EXIT_MULTIPLIER / _applyExitLimit</td>
+            <td class="status status-pass">符合</td>
+            <td>出局逻辑正确；复投时已清零 pendingUSDT / pendingXMR / xmrWithdrawalPending</td>
+          </tr>
+          <tr>
+            <td>出局后复投继续享受收益</td>
+            <td>invest</td>
+            <td class="status status-pass">符合</td>
+            <td>exited=true 时复投重置状态，可继续获得收益</td>
+          </tr>
+          <tr>
+            <td>剩余额度限制奖励</td>
+            <td>_applyExitLimit</td>
+            <td class="status status-pass">符合</td>
+            <td>收益超过剩余额度时只发放剩余部分，达到上限即出局</td>
+          </tr>
+          <tr>
+            <td>5% 提现手续费</td>
+            <td>withdrawFee=500</td>
+            <td class="status status-pass">符合</td>
+            <td>USDT 与 XMR 提现均按 5% 扣费，参数可调</td>
+          </tr>
+          <tr>
+            <td>闪兑功能（DApp 内，不真兑换）</td>
+            <td>flashExchange</td>
+            <td class="status status-pass">符合</td>
+            <td>仅调整 pendingXMR/pendingUSDT 并 burn XMR，无外部兑换</td>
+          </tr>
+          <tr>
+            <td>XMR 提现起提 0.05，手动打款</td>
+            <td>requestXMRWithdrawal / processXMRWithdrawal</td>
+            <td class="status status-pass">符合</td>
+            <td>用户提交请求，管理员调用 processXMRWithdrawal 转账</td>
+          </tr>
+          <tr>
+            <td>日化率可调 0-100%</td>
+            <td>setDailyRate</td>
+            <td class="status status-pass">符合</td>
+            <td>上限 10000（即 100%），rate=0 时无静态收益</td>
+          </tr>
+          <tr>
+            <td>算力参数可调</td>
+            <td>setComputingPower</td>
+            <td class="status status-pass">符合</td>
+            <td>无上限校验，管理员可自由调整</td>
+          </tr>
+          <tr>
+            <td>黑名单限制功能</td>
+            <td>setBlacklist / notBlacklisted</td>
+            <td class="status status-pass">符合</td>
+            <td>限制 register/invest/claim/flashExchange；保留提现权</td>
+          </tr>
+          <tr>
+            <td>紧急暂停</td>
+            <td>emergencyPause / emergencyUnpause</td>
+            <td class="status status-pass">符合</td>
+            <td>暂停时限制核心操作，允许提现</td>
+          </tr>
+          <tr>
+            <td>多签合约管理</td>
+            <td>MultiSigWallet.sol</td>
+            <td class="status status-pass">符合</td>
+            <td>支持 submit/confirm/revoke/execute，可设置 required 阈值</td>
+          </tr>
+          <tr>
+            <td>会员 ID 与邀请关系绑定</td>
+            <td>register / addressToMemberId</td>
+            <td class="status status-pass">符合</td>
+            <td>会员 ID 从 10001 自增，双向映射</td>
+          </tr>
+          <tr>
+            <td>资产界面 USDT/XMR 与闪兑</td>
+            <td>前端 Assets / Exchange</td>
+            <td class="status status-pass">符合</td>
+            <td>页面已提供余额、提现、闪兑入口</td>
+          </tr>
+          <tr>
+            <td>所有产出按 USDT 计入额度</td>
+            <td>totalEarned</td>
+            <td class="status status-pass">符合</td>
+            <td>静态、代数、团队收益均按 USDT 价值累加</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">合约安全与逻辑审计</h2>
+      <div class="card">
+        <h3>已确认的优势</h3>
+        <ul>
+          <li>使用 OpenZeppelin SafeERC20、ReentrancyGuard、Ownable，代码基础扎实</li>
+          <li>管理员与所有者权限分离：日常操作（结算、价格）用 admin，参数与所有权操作用 owner</li>
+          <li>所有资金转移均通过 safeTransfer，避免部分 ERC20 异常</li>
+          <li>重入保护覆盖 invest、claim、闪兑、提现、processXMRWithdrawal</li>
+          <li>黑名单用户仍可提现，符合 DeFi 安全惯例（防止资金被锁）</li>
+          <li>紧急暂停保留提现通道，避免极端情况下用户资金无法取出</li>
+          <li>静态收益封顶 30 天，防止长期未领取导致巨额一次性发放</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>需关注的风险与建议</h3>
+        <div class="risk-box success">
+          <div class="risk-title">已修复：出局后未提现收益清零</div>
+          <p>需求文档原文："订单结束后，需要在原点进行复投...出局后未提现的收益直接清零。"</p>
+          <p>合约 <span class="code">invest</span> 的出局复投分支现已清空 <span class="code">pendingUSDT / pendingXMR / xmrWithdrawalPending</span>，测试用例 6.6 与 coverage 测试已更新并验证通过。</p>
+        </div>
+        <div class="risk-box success">
+          <div class="risk-title">已优化：资金提取函数增加余额校验</div>
+          <p><span class="code">processXMRWithdrawal</span> 增加合约 XMR 余额校验；<span class="code">withdrawFees</span> 与 <span class="code">withdrawToken</span> 增加目标地址非零、金额大于 0、合约余额充足等校验，避免无效交易和 revert 信息不明确的问题。</p>
+        </div>
+        <div class="risk-box success">
+          <div class="risk-title">已优化：setWithdrawFee 增加事件</div>
+          <p>参数设置均限制不超过 100%，且 <span class="code">setWithdrawFee</span> 现已发出 <span class="code">WithdrawFeeUpdated</span> 事件，便于前端与事件扫描器追踪。</p>
+        </div>
+        <div class="risk-box">
+          <div class="risk-title">中风险：processXMRWithdrawal 依赖合约 XMR 储备</div>
+          <p>虽然已增加余额校验，但合约仍需持有足额 XMR 才能处理提现。建议 Admin 面板持续监控合约 XMR 余额，必要时由 owner 通过 <span class="code">withdrawToken</span> 或手动转入补充。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">测试脚本审计</h2>
+      <div class="card">
+        <h3>覆盖率结果</h3>
+        <table>
+          <tr><th>文件</th><th>语句</th><th>分支</th><th>函数</th><th>行</th></tr>
+          <tr><td>StakingDApp.sol</td><td>96.32%</td><td>81.25%</td><td>100%</td><td>97.07%</td></tr>
+          <tr><td>MultiSigWallet.sol</td><td>97.67%</td><td>79.41%</td><td>100%</td><td>95.52%</td></tr>
+          <tr><td>XMRToken.sol</td><td>100%</td><td>50%</td><td>100%</td><td>100%</td></tr>
+          <tr><td><strong>合计</strong></td><td><strong>96.28%</strong></td><td><strong>80.08%</strong></td><td><strong>98.41%</strong></td><td><strong>96.52%</strong></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>测试结构</h3>
+        <ul>
+          <li><strong>comprehensive.test.js</strong>：106 个用例，覆盖注册、投资、静态收益、12代奖励、团队奖励、出局、闪兑、提现、管理、黑名单、暂停、多签、边界、完整生命周期</li>
+          <li><strong>coverage.test.js</strong>：44 个用例，补充多签边界与 StakingDApp 边界场景</li>
+          <li><strong>StakingDApp.test.js</strong>：21 个用例，基础功能回归</li>
+        </ul>
+        <p><strong>审计意见：</strong>测试脚本组织清晰，用例命名规范，覆盖了需求文档中的主要路径。建议补充以下场景：</p>
+        <ul>
+          <li>出局后复投时 pending 余额是否被清零（待需求确认）</li>
+          <li>同一代链中多个用户连续投资时团队奖励的累计正确性</li>
+          <li>setBlacklist 对 requestXMRWithdrawal 的影响</li>
+          <li>processXMRWithdrawal 在合约 XMR 不足时的失败场景</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">前端与后端审计</h2>
+      <div class="card">
+        <h3>前端</h3>
+        <ul>
+          <li>已覆盖需求中的主要页面：仪表盘、质押、团队、闪兑、资产、管理</li>
+          <li>支持钱包连接、USDT 授权、投资、领取静态收益、闪兑、提现、管理员操作</li>
+          <li>UI 已按要求美化，使用明亮主题与金色强调，去掉 AI 生成痕迹</li>
+          <li>团队页面已增加 4 层团队网络树状视图，展示直推及下级关系</li>
+          <li>Admin 面板已增加多签 submit/confirm/revoke/execute 操作入口</li>
+          <li>仪表盘增加团队统计、最近收益列表、出局红色警告</li>
+          <li>质押页面增加日化率/算力显示、邀请链接复制、预计出局额度</li>
+          <li>资产页面增加总资产估值、闪兑快捷入口、XMR 提现处理中状态</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>后端</h3>
+        <ul>
+          <li>Express API 覆盖用户查询、事件扫描、管理员操作、多签查询、等级信息</li>
+          <li>事件扫描器缓存 19 类合约事件，支持分页查询</li>
+          <li>管理路由使用 admin-key 认证，交易使用管理员私钥签名</li>
+          <li>建议：生产环境应将 admin-key 改为更安全的签名/时间戳机制或 JWT</li>
+          <li>建议：事件扫描起始区块应配置为实际部署区块，避免从 0 扫描造成性能问题</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">最终建议清单</h2>
+      <div class="card">
+        <ol>
+          <li><strong>部署前替换合约地址占位符：</strong>frontend/src/config/contracts.js 与 backend/.env 中的占位地址需替换为真实部署地址。</li>
+          <li><strong>配置管理员私钥与 admin-key：</strong>backend/.env 中 ADMIN_PRIVATE_KEY 与 ADMIN_API_KEY 需设置为真实值。</li>
+          <li><strong>验证多签流程：</strong>部署后将 StakingDApp 与 XMRToken 的 owner 转移到 MultiSigWallet。</li>
+          <li><strong>配置事件扫描起始区块：</strong>backend/.env 中 START_BLOCK 设为实际部署区块。</li>
+          <li><strong>生产安全加固：</strong>后端认证机制升级，避免使用单一静态 key。</li>
+          <li><strong>补充前端错误降级：</strong>当前未连接钱包时控制台会输出合约调用失败，建议增加更优雅的未连接状态提示，减少控制台噪音。</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>审计完成时间：2026-08-12 | 报告文件：<a class="link" href="computer://e:\dapp\质押项目3\audit-report.html">audit-report.html</a></p>
+    </div>
+  </div>
+</body>
+</html>

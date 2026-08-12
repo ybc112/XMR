@@ -7,6 +7,7 @@ export default function Layout({ children }) {
     <div className="app-layout">
       <div className="tech-background">
         <div className="bg-noise"></div>
+        <div className="bg-particles"></div>
         <div className="bg-glow-top"></div>
         <div className="bg-glow-bottom"></div>
       </div>

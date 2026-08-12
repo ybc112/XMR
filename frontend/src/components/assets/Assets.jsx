@@ -8,6 +8,7 @@ import Badge from '../common/Badge.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
+import AnimatedNumber from '../common/AnimatedNumber.jsx'
 import { formatNumber, formatAddress, formatEther } from '../../utils/format.js'
 
 export default function Assets() {
@@ -196,7 +197,7 @@ export default function Assets() {
         className="total-value-card"
       >
         <div className="total-value-display">
-          <span className="total-value-amount text-gold">{totalValue}</span>
+          <span className="total-value-amount text-gold"><AnimatedNumber value={totalValue} duration={1200} /></span>
           <span className="total-value-unit">USDT</span>
         </div>
         <div className="total-value-breakdown">

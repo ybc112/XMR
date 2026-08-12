@@ -6,6 +6,7 @@ import Badge from '../common/Badge.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
+import AnimatedNumber from '../common/AnimatedNumber.jsx'
 import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl } from '../../utils/format.js'
 
 export default function Dashboard() {
@@ -193,7 +194,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-info">
             <p className="stat-label">总用户数</p>
-            <p className="stat-value">{stats ? Number(stats.totalUsers).toLocaleString() : '0'}</p>
+            <p className="stat-value"><AnimatedNumber value={stats ? Number(stats.totalUsers) : 0} decimals={0} /></p>
           </div>
         </div>
 
@@ -205,7 +206,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-info">
             <p className="stat-label">总质押金额 (USDT)</p>
-            <p className="stat-value">{stats ? formatNumber(stats.totalUSDTDeposited) : '0.0000'}</p>
+            <p className="stat-value"><AnimatedNumber value={stats ? formatNumber(stats.totalUSDTDeposited) : 0} /></p>
           </div>
         </div>
 
@@ -218,7 +219,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-info">
             <p className="stat-label">XMR 价格 (USDT)</p>
-            <p className="stat-value">{stats ? formatEther(stats.xmrPrice) : '0.0000'}</p>
+            <p className="stat-value"><AnimatedNumber value={stats ? formatEther(stats.xmrPrice) : 0} /></p>
           </div>
         </div>
 
@@ -230,7 +231,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-info">
             <p className="stat-label">日化率</p>
-            <p className="stat-value">{stats ? formatEther(stats.dailyRate) : '0.0000'}</p>
+            <p className="stat-value"><AnimatedNumber value={stats ? formatEther(stats.dailyRate) : 0} /></p>
           </div>
         </div>
       </div>

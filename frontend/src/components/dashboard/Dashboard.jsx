@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { NavLink } from 'react-router-dom'
 import Card from '../common/Card.jsx'
 import Button from '../common/Button.jsx'
 import ProgressBar from '../common/ProgressBar.jsx'
@@ -157,6 +158,130 @@ export default function Dashboard() {
         <p className="page-subtitle">Monero Stake 全景数据概览</p>
       </div>
 
+      {/* 手机端专属：总资产 Hero + 快捷数据 + 功能宫格 */}
+      <div className="hide-desktop">
+        <div className="total-value-card">
+          <div className="total-value-label">预估总资产 (USDT)</div>
+          <div className="total-value-amount">
+            <AnimatedNumber
+              value={
+                safeNumber(formatEther(rewardEst.usdtValue)) +
+                safeNumber(formatEther(rewardEst.xmrValue)) * safeNumber(stats ? formatEther(stats.xmrPrice) : '0')
+              }
+              decimals={4}
+            />
+          </div>
+          <div className="total-value-breakdown">
+            <div className="mobile-quick-stats">
+              <div className="mobile-quick-stat">
+                <div className="mobile-quick-stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <div className="mobile-quick-stat-value">{stats ? formatEther(stats.dailyRate) : '0.0000'}</div>
+                <div className="mobile-quick-stat-label">日化率</div>
+              </div>
+              <div className="mobile-quick-stat">
+                <div className="mobile-quick-stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                  </svg>
+                </div>
+                <div className="mobile-quick-stat-value">{stats ? Number(stats.computingPower) : 0}</div>
+                <div className="mobile-quick-stat-label">算力</div>
+              </div>
+              <div className="mobile-quick-stat">
+                <div className="mobile-quick-stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                </div>
+                <div className="mobile-quick-stat-value">{stats ? formatEther(stats.xmrPrice) : '0.0000'}</div>
+                <div className="mobile-quick-stat-label">XMR 价格</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mobile-menu-grid">
+          <NavLink to="/staking" className="mobile-menu-item">
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">立即质押</span>
+            <span className="mobile-menu-desc">投资获取收益</span>
+          </NavLink>
+
+          <NavLink to="/team" className="mobile-menu-item">
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">我的团队</span>
+            <span className="mobile-menu-desc">层级与业绩</span>
+          </NavLink>
+
+          <NavLink to="/exchange" className="mobile-menu-item">
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">闪兑 XMR</span>
+            <span className="mobile-menu-desc">实时价格兑换</span>
+          </NavLink>
+
+          <NavLink to="/assets" className="mobile-menu-item">
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                <line x1="1" y1="10" x2="23" y2="10" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">资产管理</span>
+            <span className="mobile-menu-desc">USDT / XMR</span>
+          </NavLink>
+
+          <button
+            className="mobile-menu-item"
+            onClick={handleClaim}
+            disabled={!userInfo?.isRegistered || (rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.exited}
+            style={{ border: 'none', background: 'var(--color-tech-panel)', width: '100%' }}
+          >
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">领取收益</span>
+            <span className="mobile-menu-desc">静态收益一键领取</span>
+          </button>
+
+          <NavLink to="/staking#invite" className="mobile-menu-item">
+            <div className="mobile-menu-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+            </div>
+            <span className="mobile-menu-label">邀请好友</span>
+            <span className="mobile-menu-desc">获取层级奖励</span>
+          </NavLink>
+        </div>
+      </div>
+
       {isConnected && userInfo?.isRegistered && (
         <div className="welcome-banner">
           <div className="welcome-banner-content">
@@ -184,7 +309,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="stats-grid">
+      <div className="stats-grid hide-mobile">
         <div className="stat-card">
           <div className="stat-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

@@ -1,5 +1,6 @@
 import React from 'react'
 import Navbar from './Navbar.jsx'
+import MobileBottomNav from './MobileBottomNav.jsx'
 import ChatFAB from '../chat/ChatFAB.jsx'
 
 export default function Layout({ children }) {
@@ -22,6 +23,7 @@ export default function Layout({ children }) {
         <p>Monero Stake &copy; 2026 | Private Wealth Protocol</p>
       </footer>
 
+      <MobileBottomNav />
       <ChatFAB />
     </div>
   )

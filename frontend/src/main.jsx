@@ -6,6 +6,7 @@ import { Web3Provider } from './contexts/Web3Context.jsx'
 import { ToastProvider } from './components/common/Toast.jsx'
 import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 import './styles/global.css'
+import './styles/mobile.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

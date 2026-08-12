@@ -1,0 +1,505 @@
+/* =========================================================
+   手机端专属样式：橙红科技风 / 门罗币 M 主题
+   仅在 <= 768px 生效，桌面端完全不受影响
+   ========================================================= */
+
+@media (max-width: 768px) {
+  :root {
+    /* 手机端主题色：门罗橙 + 科技深蓝 */
+    --color-mono-orange: #FF6B35;
+    --color-mono-orange-light: #FF8F5D;
+    --color-mono-red: #FF3B30;
+    --color-tech-dark: #080B14;
+    --color-tech-panel: #0F1524;
+    --color-tech-panel-elevated: #161E32;
+    --color-tech-border: rgba(255, 107, 53, 0.18);
+    --color-tech-glow: rgba(255, 107, 53, 0.35);
+    --color-text-main: #F1F5F9;
+    --color-text-sub: #94A3B8;
+    --color-text-muted: #64748B;
+  }
+
+  html, body {
+    background: var(--color-tech-dark);
+    color: var(--color-text-main);
+  }
+
+  .tech-background {
+    background: var(--color-tech-dark);
+  }
+
+  .bg-noise {
+    opacity: 0.05;
+  }
+
+  .bg-glow-top {
+    background: radial-gradient(ellipse 100% 100% at 50% 0%, rgba(255, 107, 53, 0.18), rgba(255, 107, 53, 0.04) 40%, transparent 70%);
+    filter: blur(24px);
+  }
+
+  .bg-glow-bottom {
+    background: radial-gradient(circle, rgba(255, 59, 48, 0.10), transparent 65%);
+  }
+
+  .bg-particles::before {
+    background-image:
+      radial-gradient(circle at 12% 22%, rgba(255, 107, 53, 0.22) 1.5px, transparent 2.5px),
+      radial-gradient(circle at 78% 64%, rgba(255, 143, 93, 0.16) 1px, transparent 2px),
+      radial-gradient(circle at 35% 82%, rgba(255, 107, 53, 0.14) 2px, transparent 3px),
+      radial-gradient(circle at 88% 12%, rgba(255, 143, 93, 0.18) 1px, transparent 2px);
+  }
+
+  .bg-particles::after {
+    background-image:
+      radial-gradient(circle at 60% 40%, rgba(255, 107, 53, 0.16) 1px, transparent 2px),
+      radial-gradient(circle at 25% 55%, rgba(255, 143, 93, 0.14) 1.5px, transparent 2.5px),
+      radial-gradient(circle at 92% 78%, rgba(255, 107, 53, 0.12) 1px, transparent 2px);
+  }
+
+  /* 顶部导航：简化，只保留 Logo + 钱包 */
+  .navbar {
+    background: rgba(8, 11, 20, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 107, 53, 0.12);
+    height: 60px;
+  }
+
+  .navbar-container {
+    padding: 0 16px;
+    height: 60px;
+  }
+
+  .navbar-logo .logo-icon svg path {
+    stroke: var(--color-mono-orange);
+  }
+
+  .logo-text {
+    color: #fff;
+  }
+
+  .logo-text span {
+    color: var(--color-mono-orange);
+  }
+
+  .navbar-mobile-toggle {
+    color: var(--color-text-main);
+  }
+
+  .wallet-pill {
+    background: rgba(255, 107, 53, 0.12);
+    border: 1px solid rgba(255, 107, 53, 0.25);
+    color: var(--color-mono-orange-light);
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  .wallet-dot {
+    background: var(--color-mono-orange);
+    box-shadow: 0 0 8px var(--color-mono-orange);
+  }
+
+  .navbar-mobile {
+    background: rgba(15, 21, 36, 0.98);
+    border-top: 1px solid var(--color-tech-border);
+    padding: 8px 16px 16px;
+  }
+
+  .nav-link-mobile {
+    color: var(--color-text-sub);
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .nav-link-mobile.nav-link-active {
+    background: rgba(255, 107, 53, 0.12);
+    color: var(--color-mono-orange-light);
+  }
+
+  /* 主内容区域：给底部导航留空间 */
+  .main-content {
+    padding: 76px 16px 92px;
+    min-height: 100vh;
+  }
+
+  /* 页面标题 */
+  .page-title {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    color: var(--color-text-sub);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  /* 卡片：深色科技面板 */
+  .card {
+    background: var(--color-tech-panel);
+    border: 1px solid var(--color-tech-border);
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .card-title {
+    color: #fff;
+  }
+
+  .card-subtitle {
+    color: var(--color-text-sub);
+  }
+
+  /* 总资产卡片：渐变 + 动态扫光 */
+  .total-value-card {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.22), rgba(255, 59, 48, 0.16));
+    border: 1px solid rgba(255, 107, 53, 0.28);
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .total-value-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: mobileShimmer 3.5s ease-in-out infinite;
+  }
+
+  @keyframes mobileShimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+  }
+
+  .total-value-label {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .total-value-amount {
+    color: #fff;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 16px rgba(255, 107, 53, 0.35);
+  }
+
+  .total-value-breakdown {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* 快捷数据条 */
+  .mobile-quick-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .mobile-quick-stat {
+    background: var(--color-tech-panel);
+    border: 1px solid var(--color-tech-border);
+    border-radius: 16px;
+    padding: 14px 8px;
+    text-align: center;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .mobile-quick-stat:active {
+    transform: scale(0.96);
+  }
+
+  .mobile-quick-stat-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 107, 53, 0.12);
+    color: var(--color-mono-orange-light);
+  }
+
+  .mobile-quick-stat-value {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .mobile-quick-stat-label {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* 功能宫格入口 */
+  .mobile-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .mobile-menu-item {
+    background: var(--color-tech-panel);
+    border: 1px solid var(--color-tech-border);
+    border-radius: 20px;
+    padding: 20px 16px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--color-text-main);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-menu-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.10), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .mobile-menu-item:active {
+    transform: scale(0.96);
+  }
+
+  .mobile-menu-item.active,
+  .mobile-menu-item:hover {
+    border-color: rgba(255, 107, 53, 0.45);
+    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.12);
+  }
+
+  .mobile-menu-item.active::before,
+  .mobile-menu-item:hover::before {
+    opacity: 1;
+  }
+
+  .mobile-menu-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(255, 59, 48, 0.12));
+    color: var(--color-mono-orange-light);
+    font-size: 22px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
+  }
+
+  .mobile-menu-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    position: relative;
+    z-index: 1;
+  }
+
+  .mobile-menu-desc {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 最近收益区 */
+  .mobile-section-title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 24px 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-earning-item {
+    background: var(--color-tech-panel);
+    border: 1px solid var(--color-tech-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-earning-type {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .mobile-earning-time {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  .mobile-earning-amount {
+    color: var(--color-mono-orange-light);
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  /* 底部 Tab 导航 */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: rgba(8, 11, 20, 0.92);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 107, 53, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-bottom-tab {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    position: relative;
+  }
+
+  .mobile-bottom-tab.active {
+    color: var(--color-mono-orange-light);
+  }
+
+  .mobile-bottom-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 3px;
+    background: var(--color-mono-orange);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 0 10px var(--color-mono-orange);
+  }
+
+  .mobile-bottom-tab svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* 隐藏桌面端的页脚和聊天按钮在手机上的冲突 */
+  .app-footer {
+    padding-bottom: 96px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+  }
+
+  .chat-fab {
+    bottom: 88px;
+    right: 16px;
+    background: var(--color-mono-orange);
+    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
+  }
+
+  /* 按钮：橙红渐变 */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-mono-orange), var(--color-mono-red));
+    border: none;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.25);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.35);
+    transform: translateY(-1px);
+  }
+
+  /* 进度条 */
+  .progress-track {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .progress-fill {
+    background: linear-gradient(90deg, var(--color-mono-orange), var(--color-mono-red));
+    box-shadow: 0 0 12px rgba(255, 107, 53, 0.35);
+  }
+
+  /* Badge */
+  .badge {
+    background: rgba(255, 107, 53, 0.15);
+    color: var(--color-mono-orange-light);
+    border: 1px solid rgba(255, 107, 53, 0.25);
+  }
+
+  /* 通用输入框 */
+  input, select, textarea {
+    background: var(--color-tech-panel-elevated);
+    border-color: rgba(255, 107, 53, 0.18);
+    color: #fff;
+  }
+
+  input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--color-mono-orange);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12);
+  }
+
+  /* 子页面在手机端也变成面板式 */
+  .staking-grid,
+  .team-grid,
+  .assets-grid,
+  .exchange-grid,
+  .admin-grid {
+    gap: 14px;
+  }
+
+  .form-section {
+    background: var(--color-tech-panel);
+    border-color: var(--color-tech-border);
+  }
+
+  .welcome-banner {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.14), rgba(255, 59, 48, 0.10));
+    border-color: rgba(255, 107, 53, 0.22);
+  }
+
+  .welcome-banner h2 {
+    color: #fff;
+  }
+}

@@ -217,7 +217,7 @@ export default function Dashboard() {
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
               </svg>
             </div>
-            <span className="mobile-menu-label">立即质押</span>
+            <span className="mobile-menu-label">立即算力</span>
             <span className="mobile-menu-desc">投资获取收益</span>
           </NavLink>
 
@@ -332,7 +332,7 @@ export default function Dashboard() {
             </svg>
           </div>
           <div className="stat-info">
-            <p className="stat-label">总质押金额 (USDT)</p>
+            <p className="stat-label">总算力金额 (USDT)</p>
             <p className="stat-value"><AnimatedNumber value={stats ? formatNumber(stats.totalUSDTDeposited) : 0} /></p>
           </div>
         </div>

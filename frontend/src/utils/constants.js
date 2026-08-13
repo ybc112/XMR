@@ -1,6 +1,6 @@
 export const NAV_ITEMS = [
   { path: '/', label: '仪表盘', icon: 'dashboard' },
-  { path: '/staking', label: '质押', icon: 'staking' },
+  { path: '/staking', label: '算力', icon: 'staking' },
   { path: '/team', label: '团队', icon: 'team' },
   { path: '/exchange', label: '闪兑', icon: 'exchange' },
   { path: '/assets', label: '资产', icon: 'assets' },
@@ -22,9 +22,9 @@ export const LEVEL_INFO = [
 
 export const GENERATION_RATES = [
   { generation: 1, rate: 10 },
-  { generation: 2, rate: 5 },
-  { generation: 3, rate: 3 },
-  { generation: 4, rate: 2 },
+  { generation: 2, rate: 3 },
+  { generation: 3, rate: 2 },
+  { generation: 4, rate: 1 },
   { generation: 5, rate: 1 },
   { generation: 6, rate: 1 },
   { generation: 7, rate: 1 },
@@ -62,7 +62,7 @@ export const MAX_APPROVE_AMOUNT = '0xfffffffffffffffffffffffffffffffffffffffffff
 
 export const PAGE_TITLES = {
   '/': '仪表盘',
-  '/staking': '质押',
+  '/staking': '算力',
   '/team': '团队',
   '/exchange': '闪兑',
   '/assets': '资产',

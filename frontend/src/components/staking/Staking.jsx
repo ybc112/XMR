@@ -143,11 +143,11 @@ export default function Staking() {
     return (
       <div className="page-container">
         <div className="page-header">
-          <h1 className="page-title">质押</h1>
+          <h1 className="page-title">算力</h1>
         </div>
         <Card title="连接钱包" featured>
           <div className="connect-prompt">
-            <p>请先连接钱包以使用质押功能</p>
+            <p>请先连接钱包以使用算力功能</p>
             <Button variant="primary" onClick={connectWallet}>连接钱包</Button>
           </div>
         </Card>
@@ -301,7 +301,7 @@ export default function Staking() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">质押</h1>
+        <h1 className="page-title">算力</h1>
         <p className="page-subtitle">注册、投资并领取您的静态收益</p>
       </div>
 
@@ -313,7 +313,7 @@ export default function Staking() {
         <div className="step-divider"></div>
         <div className={`step ${isRegistered ? 'step-active' : ''}`}>
           <span className="step-number">2</span>
-          <span>投资</span>
+          <span>投资算力</span>
         </div>
         <div className="step-divider"></div>
         <div className={`step ${isRegistered ? 'step-active' : ''}`}>
@@ -323,7 +323,7 @@ export default function Staking() {
       </div>
 
       <div className="staking-grid">
-        <Card title="质押操作" subtitle={isRegistered ? `USDT 余额: ${formatNumber(usdtBalance)}` : '完成注册后即可投资'} featured>
+        <Card title="算力操作" subtitle={isRegistered ? `USDT 余额: ${formatNumber(usdtBalance)}` : '完成注册后即可投资'} featured>
           <Tabs tabs={[registerTab, investTab, claimTab]} defaultActive={isRegistered ? 1 : 0} />
         </Card>
 

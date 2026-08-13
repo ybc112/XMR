@@ -2829,7 +2829,7 @@ button {
   flex-shrink: 0;
 }
 
-/* 质押页面 */
+/* 算力页面 */
 .rate-power-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

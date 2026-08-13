@@ -23,7 +23,7 @@ export function useStaking() {
         readOnlyProvider
       )
     } catch (err) {
-      console.error('创建只读质押合约失败:', err)
+      console.error('创建只读算力合约失败:', err)
       return null
     }
   }, [getReadOnlyProvider])

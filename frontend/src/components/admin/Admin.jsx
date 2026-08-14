@@ -8,7 +8,7 @@ import { useStaking } from '../../hooks/useStaking.js'
 import { useContracts } from '../../hooks/useContracts.js'
 import { useMultiSig } from '../../hooks/useMultiSig.js'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatAddress } from '../../utils/format.js'
+import { formatNumber, formatAddress, formatDailyRate } from '../../utils/format.js'
 import { CONTRACT_ADDRESSES } from '../../config/contracts.js'
 import { STAKING_DAPP_ABI } from '../../config/abis.js'
 import { ethers } from 'ethers'
@@ -262,7 +262,7 @@ export default function Admin() {
           </div>
           <div className="stat-info">
             <div className="stat-label">日化率</div>
-            <div className="stat-value">{stats ? formatNumber(stats.dailyRate) : '-'}</div>
+            <div className="stat-value">{stats ? formatDailyRate(stats.dailyRate, stats.computingPower) : '-'}</div>
             <div className="stat-change stat-change-neutral">每日收益基准</div>
           </div>
         </div>

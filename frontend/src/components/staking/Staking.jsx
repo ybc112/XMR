@@ -8,7 +8,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useContracts } from '../../hooks/useContracts.js'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatEther, getLevelName, formatAddress, safeNumber } from '../../utils/format.js'
+import { formatNumber, formatEther, getLevelName, formatAddress, safeNumber, parseContractError, formatDailyRate } from '../../utils/format.js'
 import { ethers } from 'ethers'
 
 export default function Staking() {
@@ -60,23 +60,43 @@ export default function Staking() {
     }
   }, [isConnected, account, loadData])
 
+  // 邀请链接 ?ref=0x... 自动填充推荐人（排除自己的地址）
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+    if (!ref || !ethers.isAddress(ref)) return
+    if (account && ref.toLowerCase() === account.toLowerCase()) return
+    setReferrer(ref)
+  }, [account])
+
   const handleRegister = async () => {
-    if (!referrer) {
-      showError('请输入推荐人地址')
-      return
+    const trimmed = referrer.trim()
+    // 推荐人留空 => 传 address(0)，作为创世用户注册（合约允许 _referrer == address(0)）
+    const referrerAddr = trimmed === '' ? ethers.ZeroAddress : trimmed
+
+    if (trimmed !== '') {
+      if (!ethers.isAddress(trimmed)) {
+        showError('推荐人地址格式不正确')
+        return
+      }
+      if (trimmed.toLowerCase() === account.toLowerCase()) {
+        showError('不能填写自己的地址作为推荐人，第一个注册的用户请留空')
+        return
+      }
+      const refInfo = await getUserInfo(trimmed).catch(() => null)
+      if (!refInfo?.isRegistered) {
+        showError('该推荐人尚未注册，请确认地址或留空作为第一个用户注册')
+        return
+      }
     }
-    if (!ethers.isAddress(referrer)) {
-      showError('推荐人地址格式不正确')
-      return
-    }
+
     setRegistering(true)
     try {
-      await register(referrer)
-      showSuccess('注册成功！')
+      await register(referrerAddr)
+      showSuccess(referrerAddr === ethers.ZeroAddress ? '注册成功！您是第一个用户' : '注册成功！')
       await loadData()
     } catch (err) {
       console.error('注册失败:', err)
-      showError(err.reason || err.message || '注册失败')
+      showError(parseContractError(err, '注册失败'))
     } finally {
       setRegistering(false)
     }
@@ -96,7 +116,7 @@ export default function Staking() {
       await loadData()
     } catch (err) {
       console.error('投资失败:', err)
-      showError(err.reason || err.message || '投资失败')
+      showError(parseContractError(err, '投资失败'))
     } finally {
       setInvesting(false)
     }
@@ -110,7 +130,7 @@ export default function Staking() {
       await loadData()
     } catch (err) {
       console.error('领取失败:', err)
-      showError(err.reason || err.message || '领取失败')
+      showError(parseContractError(err, '领取失败'))
     } finally {
       setClaiming(false)
     }
@@ -172,11 +192,15 @@ export default function Staking() {
     content: (
       <div className="form-section">
         <Input
-          label="推荐人地址"
+          label="推荐人地址（选填）"
           value={referrer}
           onChange={(e) => setReferrer(e.target.value)}
-          placeholder="0x..."
-          hint="请输入您的推荐人钱包地址"
+          placeholder="0x... 没有推荐人请留空"
+          hint={
+            stats && Number(stats.totalUsers) === 0
+              ? '当前还没有任何用户注册，您将成为第一个用户，请直接留空点击注册'
+              : '填写推荐人钱包地址；若您是第一个用户请留空'
+          }
         />
         <Button
           variant="primary"
@@ -197,7 +221,7 @@ export default function Staking() {
         <div className="rate-power-grid">
           <div className="rate-power-item">
             <span className="rate-power-label">当前日化率</span>
-            <span className="rate-power-value">{stats ? formatEther(stats.dailyRate) : '0.0000'}</span>
+            <span className="rate-power-value">{stats ? formatDailyRate(stats.dailyRate, stats.computingPower) : '0.00%'}</span>
           </div>
           <div className="rate-power-item">
             <span className="rate-power-label">当前算力</span>

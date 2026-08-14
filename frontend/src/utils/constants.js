@@ -7,17 +7,19 @@ export const NAV_ITEMS = [
   { path: '/admin', label: '管理', icon: 'admin', adminOnly: true }
 ]
 
+// 等级要求与链上 StakingDApp 构造函数 levels[0..8] 保持一致
+// 考核维度：个人业绩(personalRequired) + 小区业绩(subAreaRequired)；奖励为团队收益的百分比(teamRate)
 export const LEVEL_INFO = [
-  { level: 0, name: '普通会员', volumeReq: 0, subAreaReq: 0, rewardRate: 0 },
-  { level: 1, name: 'M1', volumeReq: 1000, subAreaReq: 500, rewardRate: 10 },
-  { level: 2, name: 'M2', volumeReq: 5000, subAreaReq: 2000, rewardRate: 15 },
-  { level: 3, name: 'M3', volumeReq: 20000, subAreaReq: 8000, rewardRate: 20 },
-  { level: 4, name: 'M4', volumeReq: 50000, subAreaReq: 20000, rewardRate: 25 },
-  { level: 5, name: 'M5', volumeReq: 100000, subAreaReq: 40000, rewardRate: 30 },
-  { level: 6, name: 'M6', volumeReq: 300000, subAreaReq: 100000, rewardRate: 35 },
-  { level: 7, name: 'M7', volumeReq: 800000, subAreaReq: 300000, rewardRate: 40 },
-  { level: 8, name: 'M8', volumeReq: 2000000, subAreaReq: 800000, rewardRate: 45 },
-  { level: 9, name: 'M9', volumeReq: 5000000, subAreaReq: 2000000, rewardRate: 50 }
+  { level: 0, name: '普通会员', personalReq: 0, subAreaReq: 0, rewardRate: 0 },
+  { level: 1, name: 'M1', personalReq: 200, subAreaReq: 5000, rewardRate: 5 },
+  { level: 2, name: 'M2', personalReq: 500, subAreaReq: 20000, rewardRate: 10 },
+  { level: 3, name: 'M3', personalReq: 1000, subAreaReq: 80000, rewardRate: 15 },
+  { level: 4, name: 'M4', personalReq: 2000, subAreaReq: 200000, rewardRate: 20 },
+  { level: 5, name: 'M5', personalReq: 3000, subAreaReq: 500000, rewardRate: 25 },
+  { level: 6, name: 'M6', personalReq: 5000, subAreaReq: 1000000, rewardRate: 30 },
+  { level: 7, name: 'M7', personalReq: 10000, subAreaReq: 2000000, rewardRate: 35 },
+  { level: 8, name: 'M8', personalReq: 15000, subAreaReq: 5000000, rewardRate: 40 },
+  { level: 9, name: 'M9', personalReq: 20000, subAreaReq: 10000000, rewardRate: 45 }
 ]
 
 export const GENERATION_RATES = [

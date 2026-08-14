@@ -8,7 +8,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber } from '../../utils/format.js'
+import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
 
 export default function Dashboard() {
   const { account, isConnected, connectWallet } = useWeb3()
@@ -180,7 +180,7 @@ export default function Dashboard() {
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                   </svg>
                 </div>
-                <div className="mobile-quick-stat-value">{stats ? formatEther(stats.dailyRate) : '0.0000'}</div>
+                <div className="mobile-quick-stat-value">{stats ? formatDailyRate(stats.dailyRate, stats.computingPower) : '0.00%'}</div>
                 <div className="mobile-quick-stat-label">日化率</div>
               </div>
               <div className="mobile-quick-stat">
@@ -217,7 +217,7 @@ export default function Dashboard() {
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
               </svg>
             </div>
-            <span className="mobile-menu-label">立即算力</span>
+            <span className="mobile-menu-label">兑换算力</span>
             <span className="mobile-menu-desc">投资获取收益</span>
           </NavLink>
 
@@ -358,7 +358,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-info">
             <p className="stat-label">日化率</p>
-            <p className="stat-value"><AnimatedNumber value={stats ? formatEther(stats.dailyRate) : 0} /></p>
+            <p className="stat-value">{stats ? formatDailyRate(stats.dailyRate, stats.computingPower) : '0.00%'}</p>
           </div>
         </div>
       </div>
@@ -547,7 +547,7 @@ export default function Dashboard() {
                 </div>
                 <div className="info-row">
                   <span className="info-label">提现费率</span>
-                  <span className="info-value">{stats ? Number(stats.withdrawFee) / 100 : 0}%</span>
+                  <span className="info-value">{stats ? formatBasisPoints(stats.withdrawFee) : '0.00%'}</span>
                 </div>
                 <div className="info-row">
                   <span className="info-label">合约USDT余额</span>

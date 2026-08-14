@@ -157,9 +157,10 @@ export default function Team() {
   const currentLevelInfo = LEVEL_INFO[currentLevel] || LEVEL_INFO[0]
   const nextLevelInfo = LEVEL_INFO[currentLevel + 1]
 
-  const teamVolumeNum = safeNumber(formatEther(teamVolume))
-  const nextVolumeReq = nextLevelInfo ? nextLevelInfo.volumeReq : currentLevelInfo.volumeReq
-  const levelProgressMax = nextLevelInfo ? nextVolumeReq : Math.max(currentLevelInfo.volumeReq, 1)
+  // 升级考核的是个人业绩 + 小区业绩（与合约 _checkAndSetLevel 一致），不是团队总业绩
+  const personalAmountNum = userInfo ? safeNumber(formatEther(userInfo.personalAmount)) : 0
+  const nextPersonalReq = nextLevelInfo ? nextLevelInfo.personalReq : currentLevelInfo.personalReq
+  const personalProgressMax = Math.max(nextPersonalReq, 1)
 
   const NetworkNode = ({ node }) => (
     <div className={`network-node ${node.depth === 0 ? 'network-node-root' : ''}`}>
@@ -324,13 +325,13 @@ export default function Team() {
               <div className="level-progress">
                 <div className="level-progress-header">
                   <span>升级至 {nextLevelInfo.name}</span>
-                  <small>团队业绩要求 {nextLevelInfo.volumeReq.toLocaleString()} USDT</small>
+                  <small>个人 {nextLevelInfo.personalReq.toLocaleString()} + 小区 {nextLevelInfo.subAreaReq.toLocaleString()} USDT</small>
                 </div>
               </div>
               <ProgressBar
-                label="团队业绩进度"
-                value={teamVolumeNum.toFixed(4)}
-                max={levelProgressMax.toFixed(4)}
+                label="个人业绩进度"
+                value={personalAmountNum.toFixed(4)}
+                max={personalProgressMax.toFixed(4)}
                 suffix="USDT"
                 variant="green"
               />
@@ -387,13 +388,13 @@ export default function Team() {
       </div>
 
       <div className="team-grid">
-        <Card title="等级体系" subtitle="M1-M9 等级要求及奖励">
+        <Card title="等级体系" subtitle="M1-M9 等级要求及团队奖励比例">
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>等级</th>
-                  <th>团队业绩</th>
+                  <th>个人业绩</th>
                   <th>小区业绩</th>
                   <th>奖励比例</th>
                   <th>状态</th>
@@ -406,7 +407,7 @@ export default function Team() {
                     className={level.level === currentLevel ? 'row-highlight' : ''}
                   >
                     <td className="text-bold">{level.name}</td>
-                    <td>{level.volumeReq.toLocaleString()}</td>
+                    <td>{level.personalReq.toLocaleString()}</td>
                     <td>{level.subAreaReq.toLocaleString()}</td>
                     <td className="text-gold">{level.rewardRate}%</td>
                     <td>

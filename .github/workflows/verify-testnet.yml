@@ -7,6 +7,8 @@ on:
     paths:
       - 'contracts/**'
       - 'hardhat.config.js'
+      - 'scripts/prepare-verify-inputs.mjs'
+      - 'scripts/submit-verify.mjs'
       - '.github/workflows/verify-testnet.yml'
 
 jobs:
@@ -22,20 +24,19 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx hardhat compile
 
-      - name: Diagnose bytecode match
-        run: |
-          npx hardhat compile
-          node scripts/verify-diag.js 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092
+      - name: Prepare verify inputs
+        run: node scripts/prepare-verify-inputs.mjs
 
       - name: Verify MockUSDT
-        run: npx hardhat verify --network bscTestnet 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092
+        run: node scripts/submit-verify.mjs work/verify-input-MockUSDT.json 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092 contracts/mock/MockUSDT.sol:MockUSDT v0.8.20+commit.a1b79de6
 
       - name: Verify XMRToken
-        run: npx hardhat verify --network bscTestnet 0x4EC566978354E4E947821050Fc23eD4993d8c753
+        run: node scripts/submit-verify.mjs work/verify-input-XMRToken.json 0x4EC566978354E4E947821050Fc23eD4993d8c753 contracts/XMRToken.sol:XMRToken v0.8.20+commit.a1b79de6
 
       - name: Verify StakingDApp
-        run: npx hardhat verify --network bscTestnet --constructor-args scripts/verify-args/staking-args.js 0x873a5ae5e840b60a88134aC166A865D7a10FDD35
+        run: node scripts/submit-verify.mjs work/verify-input-StakingDApp.json 0x873a5ae5e840b60a88134aC166A865D7a10FDD35 contracts/StakingDApp.sol:StakingDApp v0.8.20+commit.a1b79de6
 
       - name: Verify MultiSigWallet
-        run: npx hardhat verify --network bscTestnet --constructor-args scripts/verify-args/multisig-args.js 0x5651428D3397EE6F7EFDA773e26159403485072D
+        run: node scripts/submit-verify.mjs work/verify-input-MultiSigWallet.json 0x5651428D3397EE6F7EFDA773e26159403485072D contracts/MultiSigWallet.sol:MultiSigWallet v0.8.20+commit.a1b79de6

@@ -94,7 +94,7 @@ button {
   height: 280px;
   background: radial-gradient(ellipse 100% 100% at 50% 0%, rgba(184, 134, 11, 0.10), rgba(212, 167, 43, 0.04) 40%, transparent 70%);
   filter: blur(20px);
-  animation: glowBreath 9s ease-in-out infinite;
+  animation: glowBreath 24s ease-in-out infinite;
 }
 
 .bg-glow-bottom {
@@ -105,7 +105,7 @@ button {
   height: 600px;
   background: radial-gradient(circle, rgba(184, 134, 11, 0.06), transparent 65%);
   filter: blur(40px);
-  animation: glowBreath 13s ease-in-out infinite reverse;
+  animation: glowBreath 32s ease-in-out infinite reverse;
 }
 
 /* 漂浮金色光点背景（纯 CSS，双层错速漂移） */
@@ -150,7 +150,7 @@ button {
 
 @keyframes glowBreath {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  50% { opacity: 0.85; }
 }
 
 .app-layout {
@@ -1303,15 +1303,8 @@ button {
   height: 100%;
   border-radius: 9999px;
   background: linear-gradient(90deg, var(--color-gold), var(--color-gold-light), #F5CE5C, var(--color-gold));
-  background-size: 200% 100%;
-  animation: progressFlow 2.5s linear infinite;
   transition: width 1s ease;
   min-width: 4px;
-}
-
-@keyframes progressFlow {
-  from { background-position: 0% 0; }
-  to { background-position: -200% 0; }
 }
 
 .progress-fill-green {

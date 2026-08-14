@@ -1,0 +1,15 @@
+{
+  "mockUSDT": "0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092",
+  "xmrToken": "0x4EC566978354E4E947821050Fc23eD4993d8c753",
+  "stakingDApp": "0x873a5ae5e840b60a88134aC166A865D7a10FDD35",
+  "minterSet": true,
+  "multiSig": "0x5651428D3397EE6F7EFDA773e26159403485072D",
+  "owners": [
+    "0xC785D31F61234630E5632141cE4ed3d64C79aBC4",
+    "0xb1431c451ad866793e3fb1E3bE41C3E22883c518",
+    "0x8254fE8BA6F074704312bf1dB51c7C42e7E859cE"
+  ],
+  "required": 2,
+  "ownershipStaking": true,
+  "ownershipXmr": true
+}

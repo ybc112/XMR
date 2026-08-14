@@ -23,6 +23,11 @@ jobs:
           cache: npm
       - run: npm ci
 
+      - name: Diagnose bytecode match
+        run: |
+          npx hardhat compile
+          node scripts/verify-diag.js 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092
+
       - name: Verify MockUSDT
         run: npx hardhat verify --network bscTestnet 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092
 

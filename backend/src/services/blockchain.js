@@ -14,8 +14,8 @@ const logger = require("../utils/logger");
 
 // 创建 JsonRpcProvider（只读）
 const provider = new ethers.JsonRpcProvider(config.bscRpcUrl, {
-  chainId: 56,
-  name: "bsc",
+  chainId: config.chainId,
+  name: config.chainId === 97 ? "bsc-testnet" : "bsc",
 });
 
 // 创建管理员 Wallet（签名），如果私钥配置了的话

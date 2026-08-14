@@ -21,6 +21,8 @@ const config = {
 
   // BSC RPC
   bscRpcUrl: required("BSC_RPC_URL", "https://bsc-dataseed.binance.org"),
+  // 链 ID：56 主网 / 97 测试网
+  chainId: parseInt(required("CHAIN_ID", "56"), 10),
 
   // 合约地址
   stakingContractAddress: required("STAKING_CONTRACT_ADDRESS"),

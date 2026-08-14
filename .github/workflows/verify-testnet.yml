@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BSCSCAN_API_KEY: ${{ secrets.BSCSCAN_API_KEY }}
+      BSC_TESTNET_RPC_URL: https://bsc-testnet.bnbchain.org
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,24 +22,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-
-      - name: Debug bytecode match
-        run: |
-          npx hardhat compile
-          node -e "
-            const { ethers } = require('ethers');
-            const fs = require('fs');
-            const crypto = require('crypto');
-            const a = JSON.parse(fs.readFileSync('artifacts/contracts/mock/MockUSDT.sol/MockUSDT.json','utf8'));
-            console.log('local  sha256:', crypto.createHash('sha256').update(a.deployedBytecode).digest('hex'));
-            console.log('solc used:', a.metadata.compiler.version);
-            const provider = new ethers.JsonRpcProvider('https://bsc-testnet.bnbchain.org');
-            provider.getCode('0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092').then(code => {
-              console.log('chain  sha256:', crypto.createHash('sha256').update(code).digest('hex'));
-              console.log('match:', code.toLowerCase() === a.deployedBytecode.toLowerCase());
-              process.exit(0);
-            });
-          "
 
       - name: Verify MockUSDT
         run: npx hardhat verify --network bscTestnet 0xE842ca85D537eA6Ff7359B2DDdAD2cdB39b1F092

@@ -10,6 +10,7 @@ import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
 import { formatNumber, formatAddress, formatEther, getLevelName, safeNumber } from '../../utils/format.js'
 import { LEVEL_INFO, GENERATION_RATES } from '../../utils/constants.js'
+import { BSC_EXPLORER } from '../../config/contracts.js'
 
 const MAX_NETWORK_DEPTH = 4
 
@@ -207,7 +208,7 @@ export default function Team() {
                 </div>
               </div>
               <a
-                href={`https://bscscan.com/address/${stat.address}`}
+                href={`${BSC_EXPLORER}/address/${stat.address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="link-btn"
@@ -367,7 +368,7 @@ export default function Team() {
                 <div className="info-row" key={addr}>
                   <span className="info-label">{idx + 1}. {formatAddress(addr)}</span>
                   <a
-                    href={`https://bscscan.com/address/${addr}`}
+                    href={`${BSC_EXPLORER}/address/${addr}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="link-btn"

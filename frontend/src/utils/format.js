@@ -1,4 +1,5 @@
 import { ethers } from 'ethers'
+import { BSC_EXPLORER } from '../config/contracts.js'
 
 /**
  * 安全解析数字：对 NaN/Infinity/非法字符串返回 0
@@ -146,14 +147,14 @@ export function getLevelName(level) {
  * 格式化交易哈希链接
  */
 export function getTxHashUrl(txHash) {
-  return `https://bscscan.com/tx/${txHash}`
+  return `${BSC_EXPLORER}/tx/${txHash}`
 }
 
 /**
  * 格式化地址链接
  */
 export function getAddressUrl(address) {
-  return `https://bscscan.com/address/${address}`
+  return `${BSC_EXPLORER}/address/${address}`
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useWeb3 } from '../contexts/Web3Context.jsx'
+import { CONTRACT_ADDRESSES } from '../config/contracts.js'
 import { ethers } from 'ethers'
 
 /**
@@ -43,7 +44,7 @@ export function useContracts() {
   const checkAllowance = useCallback(async (owner, spender) => {
     try {
       const contract = getUSDTContract(false) || new ethers.Contract(
-        '0x55d398326f99059fF775485246999027B3197955',
+        CONTRACT_ADDRESSES.USDT,
         ['function allowance(address,address) view returns (uint256)'],
         getReadOnlyProvider()
       )
@@ -69,7 +70,7 @@ export function useContracts() {
   const getUSDTBalance = useCallback(async (address) => {
     try {
       const contract = getUSDTContract(false) || new ethers.Contract(
-        '0x55d398326f99059fF775485246999027B3197955',
+        CONTRACT_ADDRESSES.USDT,
         ['function balanceOf(address) view returns (uint256)'],
         getReadOnlyProvider()
       )
@@ -86,7 +87,7 @@ export function useContracts() {
     try {
       const readOnlyProvider = getReadOnlyProvider()
       const contract = getXMRTokenContract(false) || new ethers.Contract(
-        '0x0000000000000000000000000000000000000001',
+        CONTRACT_ADDRESSES.XMRToken,
         ['function balanceOf(address) view returns (uint256)'],
         readOnlyProvider
       )

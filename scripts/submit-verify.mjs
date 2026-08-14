@@ -35,6 +35,11 @@ async function main() {
   console.log("提交响应:", data.status, "|", data.message, "|", data.result);
 
   if (data.status !== "1") {
+    // 已验证过的合约返回 "Contract source code already verified"，视为成功（幂等）
+    if (String(data.result).includes("already verified")) {
+      console.log("✅ 该合约此前已验证，跳过");
+      process.exit(0);
+    }
     console.error("❌ 提交失败:", JSON.stringify(data));
     process.exit(1);
   }

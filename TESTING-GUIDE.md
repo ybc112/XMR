@@ -179,6 +179,37 @@
 
 > 只提交不确认（1 签）或只确认不执行 → 交易挂起，不生效。
 
+### 流程 8.1：BscScan 浏览器手动多签（无需提供私钥）—— 备选/首次配置推荐
+
+> 私钥只留在自己的 MetaMask 里。适用于首次添加管理员、或前端 Admin 页多签区不便操作时。
+
+**前提**：MetaMask 已导入至少 2 个 owner 钱包（`0xC785...` / `0xb143...` / `0x8254...`），切到 BSC 测试网，有 tBNB。
+
+**合约地址**：多签 `0xAEb8B096a717AeF05F169707968623C2c9F97650` ｜ StakingDApp `0xdb29E9eB1149d33E0979285eacf56572fACA62C9`
+
+**流程（每个操作对象重复一遍，txId 从 0 开始递增）**：
+
+1. 打开 https://testnet.bscscan.com/address/0xAEb8B096a717AeF05F169707968623C2c9F97650#writeContract
+2. **Connect to Web3** → MetaMask 选 **owner1**
+3. `submitTransaction` 填：
+   - `destination`：`0xdb29E9eB1149d33E0979285eacf56572fACA62C9`
+   - `value`：`0`
+   - `data (bytes)`：粘贴下方对应 calldata
+4. 换 **owner2** 钱包 → `confirmTransaction`，`_txId` 填对应编号
+5. 任选 owner 钱包 → `executeTransaction`，`_txId` 填对应编号 ✅
+
+**addAdmin 三个钱包的 calldata**：
+
+| 管理员钱包 | txId | calldata |
+|---|---|---|
+| `0xC785D31F61234630E5632141cE4ed3d64C79aBC4` | 0 | `0x70480275000000000000000000000000c785d31f61234630e5632141ce4ed3d64c79abc4` |
+| `0xb1431c451ad866793e3fb1E3bE41C3E22883c518` | 1 | `0x70480275000000000000000000000000b1431c451ad866793e3fb1e3be41c3e22883c518` |
+| `0x8254fE8BA6F074704312bf1dB51c7C42e7E859cE` | 2 | `0x704802750000000000000000000000008254fe8ba6f074704312bf1db51c7c42e7e859ce` |
+
+> 忘记 txId 时：多签合约页 **Events** 标签的 `Submission` 事件里有记录（Submitted 序号即 txId）。
+
+**验证**：StakingDApp Read 页（`0xdb29E9eB1149d33E0979285eacf56572fACA62C9#readContract`）→ `admins` 输入钱包地址返回 `true`；然后前端登录该钱包可见「管理」入口。
+
 ---
 
 ## 三、进阶/异常场景（可选）

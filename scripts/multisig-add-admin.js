@@ -1,11 +1,12 @@
 // 多签添加管理员脚本：提交 addAdmin(地址) → 确认 → 执行
 // 用法（私钥通过环境变量传入，避免留在历史记录）：
-//   export PK1=<owner私钥> PK2=<另一个owner私钥> ADMIN_ADDRESS=<要加的管理员钱包>
+//   export PK1=<owner私钥> PK2=<另一个owner私钥> ADMIN_ADDRESS=<钱包地址[,钱包2,钱包3]>
 //   node scripts/multisig-add-admin.js
 //
-// 流程：
+// 流程（每个地址）：
 //   owner1 提交 addAdmin → owner2 确认 → 自动执行（2/2）
 // 完成后链上: 目标钱包成为 StakingDApp 管理员（可登录前端 Admin 页）
+// ADMIN_ADDRESS 支持逗号分隔批量添加
 
 const { ethers } = require("ethers");
 
@@ -26,14 +27,16 @@ const stakingAbi = [
 async function main() {
   const pk1 = process.env.PK1;
   const pk2 = process.env.PK2;
-  const adminAddr = process.env.ADMIN_ADDRESS;
-  if (!pk1 || !pk2 || !adminAddr) {
-    console.error("用法: export PK1=<owner私钥> PK2=<另一个owner私钥> ADMIN_ADDRESS=<钱包地址> && node scripts/multisig-add-admin.js");
+  const adminAddrs = (process.env.ADMIN_ADDRESS || "").split(",").map(s => s.trim()).filter(Boolean);
+  if (!pk1 || !pk2 || adminAddrs.length === 0) {
+    console.error("用法: export PK1=<owner私钥> PK2=<另一个owner私钥> ADMIN_ADDRESS=<钱包地址[,钱包2]> && node scripts/multisig-add-admin.js");
     process.exit(1);
   }
-  if (!ethers.isAddress(adminAddr)) {
-    console.error("ADMIN_ADDRESS 不是合法地址");
-    process.exit(1);
+  for (const addr of adminAddrs) {
+    if (!ethers.isAddress(addr)) {
+      console.error("ADMIN_ADDRESS 含非法地址:", addr);
+      process.exit(1);
+    }
   }
 
   const provider = new ethers.JsonRpcProvider(RPC, undefined, { staticNetwork: true });
@@ -41,26 +44,31 @@ async function main() {
   const w2 = new ethers.Wallet(pk2, provider);
   const multisig = new ethers.Contract(MULTISIG, abi, w1);
   const stakingIface = new ethers.Interface(stakingAbi);
-  const data = stakingIface.encodeFunctionData("addAdmin", [adminAddr]);
 
-  console.log("目标管理员:", adminAddr);
+  console.log("目标管理员:", adminAddrs.join(", "));
   console.log("签名者1:", w1.address, "签名者2:", w2.address);
 
-  // 1. owner1 提交
-  const txId = await multisig.submitTransaction.staticCall(STAKING, 0, data);
-  const submitTx = await multisig.submitTransaction(STAKING, 0, data);
-  await submitTx.wait();
-  console.log("已提交 addAdmin, txId:", txId.toString(), "tx:", submitTx.hash);
+  for (const adminAddr of adminAddrs) {
+    const data = stakingIface.encodeFunctionData("addAdmin", [adminAddr]);
+    console.log(`\n--- 添加管理员 ${adminAddr} ---`);
 
-  // 2. owner2 确认
-  const confirmTx = await multisig.connect(w2).confirmTransaction(txId);
-  await confirmTx.wait();
-  console.log("owner2 已确认, tx:", confirmTx.hash);
+    // 1. owner1 提交
+    const txId = await multisig.submitTransaction.staticCall(STAKING, 0, data);
+    const submitTx = await multisig.submitTransaction(STAKING, 0, data);
+    await submitTx.wait();
+    console.log("已提交 addAdmin, txId:", txId.toString(), "tx:", submitTx.hash);
 
-  // 3. 执行（提交者自动算 1 签 + owner2 确认 = 2/2）
-  const execTx = await multisig.executeTransaction(txId);
-  const receipt = await execTx.wait();
-  console.log("已执行, tx:", execTx.hash, "状态:", receipt.status === 1 ? "成功 ✅" : "失败 ❌");
+    // 2. owner2 确认
+    const confirmTx = await multisig.connect(w2).confirmTransaction(txId);
+    await confirmTx.wait();
+    console.log("owner2 已确认, tx:", confirmTx.hash);
+
+    // 3. 执行（提交者自动算 1 签 + owner2 确认 = 2/2）
+    const execTx = await multisig.executeTransaction(txId);
+    const receipt = await execTx.wait();
+    console.log("已执行, tx:", execTx.hash, "状态:", receipt.status === 1 ? "成功 ✅" : "失败 ❌");
+  }
+  console.log("\n全部完成 ✅");
 }
 
 main().catch((e) => { console.error("失败:", e.message.split("\n")[0]); process.exit(1); });

@@ -51,7 +51,8 @@ async function main() {
     const sr = await (await fetch(url)).json();
     const result = String(sr.result || "");
     console.log(`  轮询 ${i}/24: ${result}`);
-    if (result.startsWith("Pass")) {
+    // "Pass - Verified" 与 "Already Verified"（Etherscan 对已完成验证合约的轮询响应）都视为成功
+    if (result.startsWith("Pass") || result.includes("Already Verified")) {
       console.log("✅ 验证通过");
       process.exit(0);
     }

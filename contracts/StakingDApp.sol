@@ -129,7 +129,14 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             require(users[_referrer].isRegistered, "Referrer not registered");
         }
 
-        uint256 memberId = nextMemberId++;
+        // 会员 ID 随机生成（10001 ~ 99999），非顺序递增
+        uint256 salt = nextMemberId++;
+        uint256 memberId;
+        do {
+            memberId = 10001 + uint256(keccak256(abi.encodePacked(
+                block.prevrandao, block.timestamp, msg.sender, salt++
+            ))) % 89999;
+        } while (memberIdToAddress[memberId] != address(0));
         users[msg.sender].isRegistered = true;
         users[msg.sender].referrer = _referrer;
         users[msg.sender].registerTime = block.timestamp;
@@ -201,6 +208,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
 
         user.totalEarned += cappedReward;
+
+        // 团队奖：伞下账户领取静态收益时，沿推荐链按级差/平级/超越规则分配（XMR 记账）
+        _distributeTeamRewards(msg.sender, cappedReward);
 
         emit StaticRewardClaimed(msg.sender, cappedReward, xmrReward);
 
@@ -406,11 +416,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
     }
 
+    /// 12 代推荐奖（按投资额基数，投资时分配）
     function _distributeRewards(address _user, uint256 _amount) internal {
         address current = users[_user].referrer;
-        uint256 prevLevel = 0;
-        uint256 prevRate = 0;
-        uint256 prevReward = 0;
         uint256 depth = 0;
 
         while (current != address(0) && depth < MAX_TEAM_DEPTH) {
@@ -438,12 +446,30 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                 }
             }
 
+            current = ancestor.referrer;
+            depth += 1;
+        }
+    }
+
+    /// 团队奖（按伞下账户静态收益基数，领取静态收益时分配，奖励以 XMR 记账）
+    /// _baseValue 为该用户本次静态收益的 USDT 价值；上级按级差/平级/超越规则
+    /// 抽取 _baseValue 的百分比，折算成 XMR 记入 pendingXMR
+    function _distributeTeamRewards(address _user, uint256 _baseValue) internal {
+        address current = users[_user].referrer;
+        uint256 prevLevel = 0;
+        uint256 prevRate = 0;
+        uint256 prevReward = 0;
+        uint256 depth = 0;
+
+        while (current != address(0) && depth < MAX_TEAM_DEPTH) {
+            User storage ancestor = users[current];
+
             if (ancestor.level > 0 && !ancestor.exited && !ancestor.isBlacklisted) {
                 uint256 currentRate = levels[ancestor.level - 1].teamRate;
                 uint256 teamReward = 0;
 
                 if (ancestor.level > prevLevel) {
-                    teamReward = _amount * (currentRate - prevRate) / 10000;
+                    teamReward = _baseValue * (currentRate - prevRate) / 10000;
                 } else if (ancestor.level == prevLevel) {
                     teamReward = prevReward * 1000 / 10000;
                 } else {
@@ -453,7 +479,12 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                 teamReward = _applyExitLimit(current, teamReward);
 
                 if (teamReward > 0) {
-                    ancestor.pendingUSDT += teamReward;
+                    // 团队奖以 XMR 记账（与静态收益同币种）
+                    uint256 xmrReward = teamReward * 10 ** 18 / xmrPrice;
+                    if (xmrReward > 0) {
+                        xmrToken.mint(address(this), xmrReward);
+                        ancestor.pendingXMR += xmrReward;
+                    }
                     ancestor.totalEarned += teamReward;
                     emit TeamReward(current, _user, ancestor.level, teamReward);
 

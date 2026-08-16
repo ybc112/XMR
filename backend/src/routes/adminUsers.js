@@ -276,19 +276,27 @@ router.get(
         withdrawFee: stats.withdrawFee,
         paused: stats.paused,
         recentRegistrations: recentRegistrations.items.map((e) => ({
-          user: e.args ? e.args.user : null,
-          referrer: e.args ? e.args.referrer : null,
-          memberId: e.args ? e.args.memberId : null,
+          txHash: e.txHash,
+          blockNumber: e.blockNumber,
           timestamp: e.timestamp,
+          args: {
+            user: e.args ? e.args.user : null,
+            referrer: e.args ? e.args.referrer : null,
+            memberId: e.args ? e.args.memberId : null,
+          },
         })),
         recentInvestments: recentInvestments.items.map((e) => ({
-          user: e.args ? e.args.user : null,
-          amount: e.args && e.args.amount ? ethers.formatEther(e.args.amount) : "0",
-          totalPersonal:
-            e.args && e.args.totalPersonal
-              ? ethers.formatEther(e.args.totalPersonal)
-              : "0",
+          txHash: e.txHash,
+          blockNumber: e.blockNumber,
           timestamp: e.timestamp,
+          args: {
+            user: e.args ? e.args.user : null,
+            amount: e.args && e.args.amount ? ethers.formatEther(e.args.amount) : "0",
+            totalPersonal:
+              e.args && e.args.totalPersonal
+                ? ethers.formatEther(e.args.totalPersonal)
+                : "0",
+          },
         })),
       })
     );

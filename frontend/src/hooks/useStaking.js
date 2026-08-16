@@ -325,6 +325,33 @@ export function useStaking() {
     return tx
   }, [isConnected, stakingContract])
 
+  const setUserComputingPower = useCallback(async (user, power) => {
+    if (!isConnected) throw new Error('请先连接钱包')
+    const contract = stakingContract(true)
+    if (!contract) throw new Error('合约未初始化')
+    const tx = await contract.setUserComputingPower(user, power)
+    await tx.wait()
+    return tx
+  }, [isConnected, stakingContract])
+
+  const adjustUserUSDT = useCallback(async (user, delta) => {
+    if (!isConnected) throw new Error('请先连接钱包')
+    const contract = stakingContract(true)
+    if (!contract) throw new Error('合约未初始化')
+    const tx = await contract.adjustUserUSDT(user, delta)
+    await tx.wait()
+    return tx
+  }, [isConnected, stakingContract])
+
+  const adjustUserXMR = useCallback(async (user, delta) => {
+    if (!isConnected) throw new Error('请先连接钱包')
+    const contract = stakingContract(true)
+    if (!contract) throw new Error('合约未初始化')
+    const tx = await contract.adjustUserXMR(user, delta)
+    await tx.wait()
+    return tx
+  }, [isConnected, stakingContract])
+
   const setXMRAddress = useCallback(async (xmrAddr) => {
     if (!isConnected) throw new Error('请先连接钱包')
     const contract = stakingContract(true)
@@ -361,6 +388,9 @@ export function useStaking() {
     emergencyUnpause,
     addAdmin,
     removeAdmin,
-    processXMRWithdrawal
+    processXMRWithdrawal,
+    setUserComputingPower,
+    adjustUserUSDT,
+    adjustUserXMR
   }
 }

@@ -2108,6 +2108,68 @@ button {
   flex-wrap: wrap;
 }
 
+.managed-user-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.managed-user-header {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.managed-user-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.managed-user-balances {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.managed-user-balance-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--color-bg-elevated);
+  border-radius: 8px;
+}
+
+.managed-user-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.managed-user-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  word-break: break-all;
+}
+
+.managed-user-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.managed-user-action-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: flex-end;
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2477,6 +2539,16 @@ button {
 
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .managed-user-header,
+  .managed-user-balances {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .managed-user-action-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .admin-status-grid {

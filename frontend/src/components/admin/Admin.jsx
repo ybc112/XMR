@@ -28,7 +28,10 @@ export default function Admin() {
     emergencyUnpause,
     addAdmin,
     removeAdmin,
-    processXMRWithdrawal
+    processXMRWithdrawal,
+    setUserComputingPower,
+    adjustUserUSDT,
+    adjustUserXMR
   } = useStaking()
   const { getUSDTBalance, getXMRBalance } = useContracts()
   const {
@@ -72,6 +75,13 @@ export default function Admin() {
   const [multisigData, setMultisigData] = useState('')
   const [multisigFuncName, setMultisigFuncName] = useState('')
   const [multisigFuncParams, setMultisigFuncParams] = useState('')
+
+  // 用户管理
+  const [manageAddr, setManageAddr] = useState('')
+  const [managedUser, setManagedUser] = useState(null)
+  const [userPowerInput, setUserPowerInput] = useState('')
+  const [usdtDeltaInput, setUsdtDeltaInput] = useState('')
+  const [xmrDeltaInput, setXmrDeltaInput] = useState('')
 
   const loadMultisigData = useCallback(async () => {
     try {
@@ -170,6 +180,61 @@ export default function Admin() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  const queryManagedUser = async () => {
+    if (!manageAddr || !ethers.isAddress(manageAddr)) {
+      showError('请输入有效的用户地址')
+      return
+    }
+    setActionLoading(true)
+    try {
+      const info = await getUserInfo(manageAddr)
+      if (!info || !info.isRegistered) {
+        showError('该地址尚未注册')
+        setManagedUser(null)
+        return
+      }
+      setManagedUser(info)
+      setUserPowerInput(info.userComputingPower ? String(Number(info.userComputingPower)) : '0')
+      setUsdtDeltaInput('')
+      setXmrDeltaInput('')
+    } catch (err) {
+      showError(err.reason || err.message || '查询失败')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const adjustPower = () => {
+    const power = Number(userPowerInput)
+    if (!Number.isInteger(power) || power < 0 || power > 10000) {
+      showError('算力值必须为 0~10000 的整数')
+      return
+    }
+    handleAction('调整用户算力', setUserComputingPower, manageAddr, power)
+  }
+
+  const adjustUSDT = () => {
+    const d = Number(usdtDeltaInput)
+    if (!usdtDeltaInput || !isFinite(d) || d === 0) {
+      showError('请输入非零的调整金额（正数增加、负数减少）')
+      return
+    }
+    const wei = ethers.parseEther(String(Math.abs(d)))
+    const delta = d > 0 ? wei : -wei
+    handleAction('调整用户USDT余额', adjustUserUSDT, manageAddr, delta)
+  }
+
+  const adjustXMR = () => {
+    const d = Number(xmrDeltaInput)
+    if (!xmrDeltaInput || !isFinite(d) || d === 0) {
+      showError('请输入非零的调整金额（正数增加、负数减少）')
+      return
+    }
+    const wei = ethers.parseEther(String(Math.abs(d)))
+    const delta = d > 0 ? wei : -wei
+    handleAction('调整用户XMR余额', adjustUserXMR, manageAddr, delta)
   }
 
   const handleSubmitMultisig = () => {
@@ -633,6 +698,129 @@ export default function Admin() {
               {blacklistStatus ? '加入黑名单' : '移出黑名单'}
             </Button>
           </div>
+        </Card>
+
+        <Card title="用户管理" className="admin-user-management">
+          <div className="admin-form">
+            <Input
+              label="用户地址"
+              value={manageAddr}
+              onChange={(e) => setManageAddr(e.target.value)}
+              placeholder="0x..."
+            />
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={queryManagedUser}
+              loading={actionLoading}
+            >
+              查询用户
+            </Button>
+          </div>
+
+          {managedUser && (
+            <div className="managed-user-panel">
+              <div className="managed-user-header">
+                <div>
+                  <span className="managed-user-label">会员ID</span>
+                  <span className="managed-user-value">{managedUser.memberId || '-'}</span>
+                </div>
+                <div>
+                  <span className="managed-user-label">等级</span>
+                  <Badge variant={managedUser.level ? 'success' : 'default'}>
+                    {managedUser.level ? `M${managedUser.level}` : '-'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="managed-user-label">状态</span>
+                  <Badge variant={managedUser.isBlacklisted ? 'danger' : managedUser.exited ? 'warning' : 'success'}>
+                    {managedUser.isBlacklisted ? '黑名单' : managedUser.exited ? '已出局' : '正常'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="managed-user-balances">
+                <div className="managed-user-balance-item">
+                  <span className="managed-user-label">待提 USDT</span>
+                  <span className="managed-user-value">{formatNumber(managedUser.pendingUSDT || 0n)}</span>
+                </div>
+                <div className="managed-user-balance-item">
+                  <span className="managed-user-label">待提 XMR</span>
+                  <span className="managed-user-value">{formatNumber(managedUser.pendingXMR || 0n)}</span>
+                </div>
+                <div className="managed-user-balance-item">
+                  <span className="managed-user-label">个人业绩</span>
+                  <span className="managed-user-value">{formatNumber(managedUser.personalAmount || 0n)}</span>
+                </div>
+                <div className="managed-user-balance-item">
+                  <span className="managed-user-label">算力</span>
+                  <span className="managed-user-value">{managedUser.userComputingPower ? Number(managedUser.userComputingPower) : '全局'}</span>
+                </div>
+              </div>
+
+              <div className="managed-user-actions">
+                <div className="managed-user-action-row">
+                  <Input
+                    label="算力值"
+                    type="number"
+                    value={userPowerInput}
+                    onChange={(e) => setUserPowerInput(e.target.value)}
+                    placeholder="0-10000（0=全局）"
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={adjustPower}
+                    loading={actionLoading}
+                  >
+                    调整算力
+                  </Button>
+                </div>
+
+                <div className="managed-user-action-row">
+                  <Input
+                    label="USDT 调整"
+                    type="number"
+                    value={usdtDeltaInput}
+                    onChange={(e) => setUsdtDeltaInput(e.target.value)}
+                    placeholder="正数增加 / 负数减少"
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={adjustUSDT}
+                    loading={actionLoading}
+                  >
+                    调整 USDT
+                  </Button>
+                </div>
+
+                <div className="managed-user-action-row">
+                  <Input
+                    label="XMR 调整"
+                    type="number"
+                    value={xmrDeltaInput}
+                    onChange={(e) => setXmrDeltaInput(e.target.value)}
+                    placeholder="正数增加 / 负数减少"
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={adjustXMR}
+                    loading={actionLoading}
+                  >
+                    调整 XMR
+                  </Button>
+                </div>
+
+                <Button
+                  variant={managedUser.isBlacklisted ? 'success' : 'danger'}
+                  fullWidth
+                  onClick={() => handleAction('黑名单管理', setBlacklist, manageAddr, !managedUser.isBlacklisted)}
+                  loading={actionLoading}
+                >
+                  {managedUser.isBlacklisted ? '移出黑名单' : '加入黑名单'}
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 

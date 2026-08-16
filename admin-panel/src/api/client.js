@@ -12,8 +12,12 @@ export function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
+// API 地址：开发环境用本地后端；生产环境（Vercel）用相对路径 /api，
+// 由 vercel.json 服务端转发到服务器 3001（避免 HTTPS 页面请求 HTTP 的混合内容拦截）
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || 'http://localhost:3001',
+  baseURL:
+    import.meta.env.VITE_API_BASE ||
+    (import.meta.env.DEV ? 'http://localhost:3001' : ''),
   timeout: 30000,
 });
 

@@ -276,11 +276,11 @@ export default function Assets() {
           <Button
             variant="primary"
             fullWidth
-            onClick={() => setUsdtModalOpen(true)}
-            disabled={userInfo && userInfo.pendingUSDT === 0n}
-          >
-            提现 USDT
-          </Button>
+              onClick={() => setUsdtModalOpen(true)}
+              disabled={userInfo && (userInfo.pendingUSDT === 0n || userInfo.isBlacklisted)}
+            >
+              {userInfo?.isBlacklisted ? '账户已被拉黑' : '提现 USDT'}
+            </Button>
         </Card>
 
         <Card
@@ -345,18 +345,18 @@ export default function Assets() {
               variant="outline"
               fullWidth
               onClick={() => setXmrModalOpen(true)}
-              disabled={userInfo && (userInfo.pendingXMR === 0n || !xmrAddr)}
+              disabled={userInfo && (userInfo.pendingXMR === 0n || !xmrAddr || userInfo.isBlacklisted)}
             >
-              {xmrAddr ? '提现 XMR' : '请先添加 XMR 收款地址'}
+              {userInfo?.isBlacklisted ? '账户已被拉黑' : xmrAddr ? '提现 XMR' : '请先添加 XMR 收款地址'}
             </Button>
             <Button
               variant="accent"
               fullWidth
               onClick={() => navigate('/exchange')}
-              disabled={userInfo && userInfo.pendingXMR === 0n}
+              disabled={userInfo && (userInfo.pendingXMR === 0n || userInfo.isBlacklisted)}
               icon={exchangeIcon}
             >
-              闪兑 USDT
+              {userInfo?.isBlacklisted ? '账户已被拉黑' : '闪兑 USDT'}
             </Button>
           </div>
         </Card>

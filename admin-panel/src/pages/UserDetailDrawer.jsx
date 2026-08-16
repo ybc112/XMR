@@ -101,11 +101,22 @@ function TreeTab({ address, onSwitchUser }) {
   const { message } = App.useApp();
   const [treeData, setTreeData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState([]);
 
   useEffect(() => {
     setLoading(true);
     getUserTree(address, { params: { depth: 3 } })
-      .then((root) => setTreeData(root || null))
+      .then((root) => {
+        setTreeData(root || null);
+        // 默认展开根节点和第一层
+        const keys = [];
+        const collect = (n, depth) => {
+          if (depth <= 1) keys.push(n.address);
+          (n.children || []).forEach((c) => collect(c, depth + 1));
+        };
+        if (root) collect(root, 0);
+        setExpandedKeys(keys);
+      })
       .catch((e) => message.error(e.message))
       .finally(() => setLoading(false));
   }, [address, message]);
@@ -121,7 +132,13 @@ function TreeTab({ address, onSwitchUser }) {
         <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
           个人 {n.personalAmount != null ? String(n.personalAmount) : '-'} · 团队 {n.teamTotalVolume != null ? String(n.teamTotalVolume) : '-'}
         </Typography.Text>
-        <Typography.Link style={{ fontSize: 12 }} onClick={() => onSwitchUser(n.address)}>
+        <Typography.Link
+          style={{ fontSize: 12 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSwitchUser(n.address);
+          }}
+        >
           详情
         </Typography.Link>
       </Space>
@@ -141,7 +158,17 @@ function TreeTab({ address, onSwitchUser }) {
   return (
     <Tree
       showLine
-      defaultExpandAll
+      blockNode
+      expandedKeys={expandedKeys}
+      onExpand={(keys) => setExpandedKeys(keys)}
+      onSelect={(keys) => {
+        // 点击节点标题也切换展开/折叠
+        const key = keys[0];
+        if (!key) return;
+        setExpandedKeys((prev) =>
+          prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+        );
+      }}
       treeData={[toNode(treeData)]}
       style={{ background: '#fafafa', padding: 12, borderRadius: 6 }}
     />
@@ -443,8 +470,8 @@ export default function UserDetailDrawer({ address, open, onClose, onSwitchUser 
   };
 
   const d = detail || {};
-  const earned = Number(d.totalEarned || 0);
-  const remain = Number(d.remainingExitLimit || 0);
+  const earned = Number(d.totalEarned?.formatted || 0);
+  const remain = Number(d.remainingExitLimit?.formatted || 0);
   const limitTotal = earned + remain;
   const exitPercent = limitTotal > 0 ? Math.min(100, (earned / limitTotal) * 100) : 0;
 

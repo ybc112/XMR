@@ -279,7 +279,7 @@ export default function Staking() {
           loading={investing}
           disabled={userInfo.isBlacklisted}
         >
-          {userInfo.exited ? '复投重启' : '确认投资'}
+          {userInfo.isBlacklisted ? '账户已被拉黑' : userInfo.exited ? '复投重启' : '确认投资'}
         </Button>
         {userInfo.exited && (
           <p className="text-warning text-center mt-2">您已出局：复投将清零累计收益与待提余额，开启新一轮</p>
@@ -317,9 +317,9 @@ export default function Staking() {
           fullWidth
           onClick={handleClaim}
           loading={claiming}
-          disabled={rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n}
+          disabled={(rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.isBlacklisted}
         >
-          领取静态收益
+          {userInfo?.isBlacklisted ? '账户已被拉黑' : '领取静态收益'}
         </Button>
       </div>
     ) : (

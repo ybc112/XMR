@@ -246,7 +246,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         emit FlashExchanged(msg.sender, _xmrAmount, usdtAmount);
     }
 
-    function withdrawUSDT(uint256 _amount) external nonReentrant {
+    function withdrawUSDT(uint256 _amount) external nonReentrant notBlacklisted {
         require(_amount > 0, "Amount must be > 0");
         require(_amount % WITHDRAW_UNIT == 0, "Withdrawal must be multiple of 10");
 
@@ -270,7 +270,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         emit XMRAddressSet(msg.sender, _addr);
     }
 
-    function requestXMRWithdrawal(uint256 _amount) external nonReentrant {
+    function requestXMRWithdrawal(uint256 _amount) external nonReentrant notBlacklisted {
         require(_amount >= XMR_WITHDRAWAL_MIN, "Below minimum withdrawal");
         require(bytes(xmrAddress[msg.sender]).length > 0, "XMR address not set");
 

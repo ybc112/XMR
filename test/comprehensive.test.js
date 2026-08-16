@@ -779,15 +779,15 @@ describe("Comprehensive StakingDApp Tests", function () {
                 .to.be.revertedWith("Insufficient balance");
         });
 
-        it("8.4 Should allow withdrawal when blacklisted (safety)", async function () {
+        it("8.4 Should reject withdrawal when blacklisted", async function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, MIN100);
             await registerAndInvest(staking, child, root.address, MIN100);
             await staking.setBlacklist(root.address, true);
             const reward = (await staking.getUserInfo(root.address)).pendingUSDT;
-            await staking.connect(root).withdrawUSDT(reward);
-            expect((await staking.getUserInfo(root.address)).pendingUSDT).to.equal(0);
+            await expect(staking.connect(root).withdrawUSDT(reward))
+                .to.be.revertedWith("User is blacklisted");
         });
 
         it("8.5 Should handle custom fee rate", async function () {
@@ -847,6 +847,18 @@ describe("Comprehensive StakingDApp Tests", function () {
                 .to.be.revertedWith("Invalid XMR address length");
             await expect(staking.connect(u).setXMRAddress("4" + "B".repeat(120)))
                 .to.be.revertedWith("Invalid XMR address length");
+        });
+
+        it("9.2d Should reject XMR withdrawal when blacklisted", async function () {
+            const u = signers[0];
+            await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
+            await staking.connect(u).setXMRAddress("4" + "B".repeat(94));
+            await advanceDays(1);
+            await staking.connect(u).claimStaticReward();
+            const xmrAmount = (await staking.getUserInfo(u.address)).pendingXMR;
+            await staking.setBlacklist(u.address, true);
+            await expect(staking.connect(u).requestXMRWithdrawal(xmrAmount))
+                .to.be.revertedWith("User is blacklisted");
         });
 
         it("9.3 Should accept withdrawal at exactly 0.05 XMR", async function () {

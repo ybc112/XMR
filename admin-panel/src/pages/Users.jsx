@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { App, Button, Card, Input, Select, Space, Table, Tag } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { getUsers } from '../api/client';
+import { App, Button, Card, Input, Popover, Select, Space, Table, Tag, Typography } from 'antd';
+import { EditOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { getUsers, updateUserRemark } from '../api/client';
 import CopyableText from '../components/CopyableText';
 import Money from '../components/Money';
 import { formatISO, levelColor } from '../utils/format';
@@ -66,6 +66,68 @@ export default function Users() {
     setDrawerOpen(true);
   };
 
+  const RemarkCell = ({ value, address, onUpdated }) => {
+    const [open, setOpen] = useState(false);
+    const [text, setText] = useState(value || '');
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      setSaving(true);
+      try {
+        await updateUserRemark(address, text);
+        message.success('备注已保存');
+        setOpen(false);
+        onUpdated && onUpdated();
+      } catch (e) {
+        message.error(e.message || '保存失败');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    const content = (
+      <div style={{ width: 220 }}>
+        <Input.TextArea
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="输入备注"
+          maxLength={200}
+          showCount
+        />
+        <div style={{ marginTop: 8, textAlign: 'right' }}>
+          <Button size="small" onClick={() => setOpen(false)} style={{ marginRight: 8 }}>
+            取消
+          </Button>
+          <Button size="small" type="primary" loading={saving} onClick={handleSave}>
+            保存
+          </Button>
+        </div>
+      </div>
+    );
+
+    return (
+      <Popover
+        content={content}
+        title="编辑备注"
+        trigger="click"
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (v) setText(value || '');
+        }}
+      >
+        <Typography.Text
+          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 140 }}
+          ellipsis={{ tooltip: value }}
+        >
+          {value || <span style={{ color: '#999' }}>点击添加</span>}
+          <EditOutlined style={{ fontSize: 12, color: '#999' }} />
+        </Typography.Text>
+      </Popover>
+    );
+  };
+
   const columns = [
     {
       title: '地址',
@@ -89,13 +151,10 @@ export default function Users() {
     { title: '待提 XMR', dataIndex: 'pendingXMR', align: 'right', width: 110, render: (v) => <Money value={v} /> },
     {
       title: '算力',
-      dataIndex: 'userComputingPower',
-      width: 90,
-      align: 'center',
-      render: (v) => {
-        const n = Number(v || 0);
-        return n === 0 ? <Tag>全局</Tag> : <span className="mono">{n / 100}倍</span>;
-      },
+      dataIndex: 'personalAmount',
+      width: 110,
+      align: 'right',
+      render: (v) => <Money value={v} />,
     },
     {
       title: '状态',
@@ -107,6 +166,12 @@ export default function Users() {
           {!r.exited && !r.isBlacklisted ? <Tag color="green">正常</Tag> : null}
         </Space>
       ),
+    },
+    {
+      title: '备注',
+      dataIndex: 'remark',
+      width: 160,
+      render: (v, r) => <RemarkCell value={v} address={r.address} onUpdated={load} />,
     },
     {
       title: '注册时间',

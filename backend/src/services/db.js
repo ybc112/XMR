@@ -63,6 +63,12 @@ CREATE TABLE IF NOT EXISTS block_timestamps (
   blockNumber INTEGER PRIMARY KEY,
   timestamp INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_remarks (
+  address TEXT PRIMARY KEY,
+  remark TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL
+);
 `);
 
 logger.info(`SQLite 数据库已连接: ${dbFile}`);
@@ -445,6 +451,24 @@ function getAdminLogs({ page = 1, limit = 20 } = {}) {
   return { items, total, page, limit };
 }
 
+// ======================== 用户备注 ========================
+
+function getUserRemark(address) {
+  const row = sqlite
+    .prepare("SELECT remark FROM user_remarks WHERE LOWER(address) = LOWER(?)")
+    .get(address);
+  return row ? row.remark : "";
+}
+
+function setUserRemark(address, remark) {
+  const stmt = sqlite.prepare(`
+    INSERT INTO user_remarks(address, remark, updated_at)
+    VALUES(LOWER(?), ?, ?)
+    ON CONFLICT(address) DO UPDATE SET remark = excluded.remark, updated_at = excluded.updated_at
+  `);
+  stmt.run(address, String(remark || ""), Math.floor(Date.now() / 1000));
+}
+
 module.exports = {
   insertEvent,
   getEventsByUser,
@@ -464,4 +488,6 @@ module.exports = {
   ensureBootstrap,
   insertAdminLog,
   getAdminLogs,
+  getUserRemark,
+  setUserRemark,
 };

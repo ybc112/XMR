@@ -754,7 +754,7 @@ export default function Admin() {
                 </div>
                 <div className="managed-user-balance-item">
                   <span className="managed-user-label">算力</span>
-                  <span className="managed-user-value">{managedUser.userComputingPower ? Number(managedUser.userComputingPower) : '全局'}</span>
+                  <span className="managed-user-value">{formatNumber(managedUser.personalAmount || 0n)}</span>
                 </div>
               </div>
 

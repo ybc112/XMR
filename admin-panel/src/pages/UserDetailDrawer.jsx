@@ -573,13 +573,7 @@ export default function UserDetailDrawer({ address, open, onClose, onSwitchUser 
               <Money value={d.pendingXMR} />
             </Descriptions.Item>
             <Descriptions.Item label="算力">
-              {Number(d.userComputingPower || 0) === 0 ? (
-                <Tag>全局</Tag>
-              ) : (
-                <span className="mono">
-                  {Number(d.userComputingPower)} ({Number(d.userComputingPower) / 100}倍)
-                </span>
-              )}
+              <Money value={d.personalAmount} />
             </Descriptions.Item>
           </Descriptions>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8 }}>

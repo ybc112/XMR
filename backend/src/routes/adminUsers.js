@@ -65,7 +65,7 @@ function resolveAddress(req, res) {
 }
 
 /** 由注册事件行 + 链上 userInfo 构建用户列表项 */
-function buildUserItem(reg, info, power) {
+function buildUserItem(reg, info, power, remark) {
   return {
     address: reg.address,
     memberId: reg.memberId,
@@ -82,6 +82,7 @@ function buildUserItem(reg, info, power) {
     exited: info ? info.exited : null,
     isBlacklisted: info ? info.isBlacklisted : null,
     userComputingPower: power,
+    remark: remark || "",
   };
 }
 
@@ -341,7 +342,8 @@ router.get(
       const enriched = await mapInBatches(all.items, 20, async (reg) => {
         const info = await blockchain.getUserInfo(reg.address);
         const power = await getUserComputingPower(reg.address);
-        return { reg, info, power };
+        const remark = db.getUserRemark(reg.address);
+        return { reg, info, power, remark };
       });
 
       const filtered = enriched.filter((it) => {
@@ -365,7 +367,7 @@ router.get(
       const skip = (page - 1) * limit;
       const items = filtered
         .slice(skip, skip + limit)
-        .map((it) => buildUserItem(it.reg, it.info, it.power));
+        .map((it) => buildUserItem(it.reg, it.info, it.power, it.remark));
 
       return res.json(successResponse(buildPagination(items, total, page, limit)));
     }
@@ -382,7 +384,8 @@ router.get(
         logger.warn(`getUserInfo failed for ${reg.address}: ${infoError}`);
       }
       const power = await getUserComputingPower(reg.address);
-      const item = buildUserItem(reg, info, power);
+      const remark = db.getUserRemark(reg.address);
+      const item = buildUserItem(reg, info, power, remark);
       if (infoError) item._error = infoError;
       return item;
     });
@@ -462,6 +465,28 @@ router.get(
           referralCount !== null ? referralCount.toString() : null,
         referrerChain,
         registeredAt,
+      })
+    );
+  })
+);
+
+/**
+ * PUT /api/admin/users/:address/remark - 更新用户备注
+ */
+router.put(
+  "/users/:address/remark",
+  logAction("更新用户备注"),
+  asyncHandler(async (req, res) => {
+    const addr = resolveAddress(req, res);
+    if (!addr) return;
+
+    const { remark } = req.body;
+    db.setUserRemark(addr, remark);
+
+    res.json(
+      successResponse({
+        address: addr,
+        remark: String(remark || ""),
       })
     );
   })

@@ -16,6 +16,37 @@ const FLOW_DIRECTION_MAP = {
   XMRWithdrawalProcessed: "out",
 };
 
+// 事件类型 -> 该事件归属用户（收益/操作主体）的字段名
+// 避免把 GenerationReward/TeamReward 里触发方的 investor 地址误匹配给收益人
+const EVENT_OWNER_FIELD_MAP = {
+  Registered: "user",
+  Invested: "user",
+  StaticRewardClaimed: "user",
+  GenerationReward: "receiver",
+  TeamReward: "receiver",
+  Exited: "user",
+  USDTWithdrawn: "user",
+  XMRWithdrawalRequested: "user",
+  XMRWithdrawalProcessed: "user",
+  XMRAddressSet: "user",
+  UserComputingPowerSet: "user",
+  BalanceAdjusted: "user",
+  FlashExchanged: "user",
+  BlacklistUpdated: "user",
+  LevelUpdated: "user",
+};
+
+/**
+ * 获取事件归属的地址
+ */
+function getEventOwnerAddress(event) {
+  if (!event || !event.args) return null;
+  const field = EVENT_OWNER_FIELD_MAP[event.eventType];
+  if (!field) return null;
+  const value = event.args[field];
+  return typeof value === "string" ? value : null;
+}
+
 class CacheService {
   constructor() {
     // 事件存储：按事件类型分类存储
@@ -101,12 +132,10 @@ class CacheService {
   getEventsByAddress(address, page, limit, direction = "all") {
     const addr = address.toLowerCase();
     const all = this.events.all.filter((e) => {
-      // 检查事件的 args 中是否有匹配的地址
-      if (!e.args) return false;
-      return Object.values(e.args).some(
-        (v) =>
-          typeof v === "string" && v.toLowerCase() === addr
-      );
+      // 按事件类型精确匹配归属地址，避免把 GenerationReward/TeamReward 中的
+      // investor（触发方）误当成 receiver（收益方）
+      const owner = getEventOwnerAddress(e);
+      return owner && owner.toLowerCase() === addr;
     });
 
     // 资金方向过滤

@@ -66,6 +66,8 @@ export const getPendingXmrWithdrawals = (params) =>
 // ---------- 用户 ----------
 export const getUsers = (params) => client.get('/api/admin/users', { params });
 export const getUserDetail = (address) => client.get(`/api/admin/users/${address}`);
+export const updateUserRemark = (address, remark) =>
+  client.put(`/api/admin/users/${address}/remark`, { remark });
 export const getUserReferrals = (address, params) =>
   client.get(`/api/admin/users/${address}/referrals`, { params });
 export const getUserEvents = (address, params) =>

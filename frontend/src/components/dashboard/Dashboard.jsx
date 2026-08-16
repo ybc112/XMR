@@ -189,7 +189,9 @@ export default function Dashboard() {
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                   </svg>
                 </div>
-                <div className="mobile-quick-stat-value">{stats ? Number(stats.computingPower) : 0}</div>
+                <div className="mobile-quick-stat-value">
+                  {userInfo ? formatNumber(userInfo.personalAmount) : (stats ? Number(stats.computingPower) : 0)}
+                </div>
                 <div className="mobile-quick-stat-label">算力</div>
               </div>
               <div className="mobile-quick-stat">

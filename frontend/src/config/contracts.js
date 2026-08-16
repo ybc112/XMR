@@ -3,10 +3,10 @@
 // XMR 地址绑定、按用户算力、用户余额调整）
 // 部署记录: deploy-state-testnet.json
 export const CONTRACT_ADDRESSES = {
-  StakingDApp: '0xb1748538616222F30E8031e13E14810B8C26B2c3',
-  XMRToken: '0x89EBa963BcA8C91502747f4F1528C2A70dB08BeF',
-  MultiSigWallet: '0xd47995d173a2fBCF4426aD83eE2F159C8B583295',
-  USDT: '0xc19dbe92987AEe44E7A0442807518532ef0A517a' // MockUSDT（测试 U，公开 mint）
+  StakingDApp: '0xd8757c0c9646397e9b71f63C1E1e0Ab8963e2ad4',
+  XMRToken: '0x7f8600a20B88bb713E04c689f70d92BFE965828E',
+  MultiSigWallet: '0x8A85061dc4C48a65b7b10E0EF41b1a315b889018',
+  USDT: '0xBCE748bd6A0B93318f2B0DebA2Efc59f5107072C' // MockUSDT（测试 U，公开 mint）
 }
 
 // 当前网络配置：BSC 测试网
@@ -50,5 +50,10 @@ export const USDT_DECIMALS = 18
 // 链上 explorer (当前测试网)
 export const BSC_EXPLORER = 'https://testnet.bscscan.com'
 
-// 后端 API 地址（资金明细等只读数据走后端缓存；可用 VITE_API_BASE_URL 覆盖）
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+// 后端 API 地址（资金明细等只读数据走后端缓存）
+// 生产（Vercel HTTPS）默认用相对路径，由 vercel.json 将 /api/* 服务端转发到后端，
+// 避免浏览器混合内容拦截（HTTPS 页面禁止请求 HTTP 接口）
+// 可用 VITE_API_BASE_URL 覆盖（如 https://api.example.com）
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3001' : '')

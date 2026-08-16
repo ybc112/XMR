@@ -614,6 +614,21 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(info.exitLimit).to.equal(MIN100 * 3n);
         });
 
+        it("6.4b Should not claim immediately after reinvestment (lastClaimDay reset)", async function () {
+            const u = signers[0];
+            await registerAndInvest(staking, u, ZERO, MIN100);
+            await staking.setDailyRate(10000);
+            for (let i = 0; i < 3; i++) {
+                await advanceDays(1);
+                await staking.connect(u).claimStaticReward();
+            }
+            expect((await staking.getUserInfo(u.address)).exited).to.be.true;
+            await advanceDays(1);
+            await staking.connect(u).invest(MIN100);
+            await expect(staking.connect(u).claimStaticReward())
+                .to.be.revertedWith("Already claimed today");
+        });
+
         it("6.5 Should accumulate exit limit with multiple investments (not exited)", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));

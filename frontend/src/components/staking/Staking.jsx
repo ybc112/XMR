@@ -116,6 +116,18 @@ export default function Staking() {
       showError('投资金额必须是 100 的整数倍')
       return
     }
+    if (userInfo?.exited) {
+      const pendingUsdt = userInfo.pendingUSDT > 0n ? formatEther(userInfo.pendingUSDT) : '0'
+      const pendingXmr = userInfo.pendingXMR > 0n ? formatEther(userInfo.pendingXMR) : '0'
+      const ok = window.confirm(
+        `您已出局，复投将开启新一轮：\n\n` +
+        `· 累计收益清零，出局额度按新本金重新计算\n` +
+        `· 待提现 USDT 余额（${Number(pendingUsdt).toFixed(2)}）将被清零\n` +
+        `· 待提现 XMR 余额（${Number(pendingXmr).toFixed(2)}）将被清零\n\n` +
+        `如有未提现余额请先提现再复投。确认复投？`
+      )
+      if (!ok) return
+    }
     setInvesting(true)
     try {
       showInfo('正在处理投资交易...')
@@ -265,12 +277,12 @@ export default function Staking() {
           fullWidth
           onClick={handleInvest}
           loading={investing}
-          disabled={userInfo.exited || userInfo.isBlacklisted}
+          disabled={userInfo.isBlacklisted}
         >
-          {userInfo.exited ? '已出局' : '确认投资'}
+          {userInfo.exited ? '复投重启' : '确认投资'}
         </Button>
         {userInfo.exited && (
-          <p className="text-warning text-center mt-2">您已出局，无法继续投资</p>
+          <p className="text-warning text-center mt-2">您已出局：复投将清零累计收益与待提余额，开启新一轮</p>
         )}
         <p className="form-tip">* 投资前系统会自动检查并处理USDT授权</p>
       </div>

@@ -30,13 +30,13 @@ jobs:
         run: node scripts/prepare-verify-inputs.mjs
 
       - name: Verify MockUSDT
-        run: node scripts/submit-verify.mjs work/verify-input-MockUSDT.json 0xc19dbe92987AEe44E7A0442807518532ef0A517a contracts/mock/MockUSDT.sol:MockUSDT v0.8.20+commit.a1b79de6
+        run: node scripts/submit-verify.mjs work/verify-input-MockUSDT.json 0xBCE748bd6A0B93318f2B0DebA2Efc59f5107072C contracts/mock/MockUSDT.sol:MockUSDT v0.8.20+commit.a1b79de6
 
       - name: Verify XMRToken
-        run: node scripts/submit-verify.mjs work/verify-input-XMRToken.json 0x89EBa963BcA8C91502747f4F1528C2A70dB08BeF contracts/XMRToken.sol:XMRToken v0.8.20+commit.a1b79de6
+        run: node scripts/submit-verify.mjs work/verify-input-XMRToken.json 0x7f8600a20B88bb713E04c689f70d92BFE965828E contracts/XMRToken.sol:XMRToken v0.8.20+commit.a1b79de6
 
       - name: Verify StakingDApp
-        run: node scripts/submit-verify.mjs work/verify-input-StakingDApp.json 0xb1748538616222F30E8031e13E14810B8C26B2c3 contracts/StakingDApp.sol:StakingDApp v0.8.20+commit.a1b79de6
+        run: node scripts/submit-verify.mjs work/verify-input-StakingDApp.json 0xd8757c0c9646397e9b71f63C1E1e0Ab8963e2ad4 contracts/StakingDApp.sol:StakingDApp v0.8.20+commit.a1b79de6
 
       - name: Verify MultiSigWallet
-        run: node scripts/submit-verify.mjs work/verify-input-MultiSigWallet.json 0xd47995d173a2fBCF4426aD83eE2F159C8B583295 contracts/MultiSigWallet.sol:MultiSigWallet v0.8.20+commit.a1b79de6
+        run: node scripts/submit-verify.mjs work/verify-input-MultiSigWallet.json 0x8A85061dc4C48a65b7b10E0EF41b1a315b889018 contracts/MultiSigWallet.sol:MultiSigWallet v0.8.20+commit.a1b79de6

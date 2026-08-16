@@ -172,6 +172,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             user.pendingUSDT = 0;
             user.pendingXMR = 0;
             user.xmrWithdrawalPending = 0;
+            user.lastClaimDay = block.timestamp / DAY_SECONDS;
             user.exited = false;
         } else {
             user.personalAmount += _amount;

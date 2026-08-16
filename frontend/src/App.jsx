@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout.jsx'
-import { useWeb3 } from './contexts/Web3Context.jsx'
 
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard.jsx'))
 const Staking = lazy(() => import('./components/staking/Staking.jsx'))
@@ -20,14 +19,6 @@ function Loading() {
   )
 }
 
-function AdminRoute({ children }) {
-  const { isAdmin } = useWeb3()
-  if (!isAdmin) {
-    return <Navigate to="/" replace />
-  }
-  return children
-}
-
 export default function App() {
   return (
     <Layout>
@@ -39,14 +30,7 @@ export default function App() {
           <Route path="/exchange" element={<Exchange />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/records" element={<Records />} />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <Admin />
-              </AdminRoute>
-            }
-          />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

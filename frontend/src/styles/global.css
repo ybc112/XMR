@@ -3273,3 +3273,18 @@ button {
   border-color: var(--color-gold);
   color: var(--color-gold);
 }
+
+/* 管理后台非管理员提示横幅 */
+.admin-readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(184, 134, 11, 0.08);
+  border: 1px solid rgba(184, 134, 11, 0.25);
+  color: #8a6d1a;
+  font-size: 13px;
+  font-weight: 500;
+}

@@ -14,7 +14,7 @@ import { STAKING_DAPP_ABI } from '../../config/abis.js'
 import { ethers } from 'ethers'
 
 export default function Admin() {
-  const { account, isConnected, connectWallet } = useWeb3()
+  const { account, isConnected, connectWallet, isAdmin } = useWeb3()
   const {
     getUserInfo,
     getContractStats,
@@ -154,6 +154,10 @@ export default function Admin() {
   }, [withdrawalUser, getUserInfo])
 
   const handleAction = async (actionName, actionFn, ...args) => {
+    if (!isAdmin) {
+      showError('当前钱包不是管理员，无法执行该操作（仅可查看）')
+      return
+    }
     setActionLoading(true)
     try {
       showInfo(`正在执行: ${actionName}`)
@@ -262,6 +266,14 @@ export default function Admin() {
 
   return (
     <div className="page-container">
+      {!isAdmin && (
+        <div className="admin-readonly-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M12 9V14M12 17H12.01M10.3 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.7 3.86A2 2 0 0010.3 3.86Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>当前钱包不是管理员：仅可查看数据，执行操作需使用管理员钱包（多签 owner 或已添加为 admin 的钱包）</span>
+        </div>
+      )}
       <div className="page-header">
         <div>
           <h1 className="page-title">管理后台</h1>

@@ -136,7 +136,7 @@ async function getUserInfo(address) {
     isBlacklisted: info.isBlacklisted,
     isRegistered: info.isRegistered,
     exited: info.exited,
-    level: info.level,
+    level: Number(info.level), // 后端 ABI 中 level 为 uint256，需转 number 否则 JSON 序列化失败
     pendingUSDT: {
       raw: info.pendingUSDT.toString(),
       formatted: ethers.formatEther(info.pendingUSDT),

@@ -3063,7 +3063,7 @@ button {
 
 .record-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 14px 8px;
   border-bottom: 1px solid var(--color-border-light);
@@ -3148,8 +3148,8 @@ button {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 0;
-  max-width: 55%;
   min-width: 0;
+  max-width: 55%;
 }
 
 .record-amount {
@@ -3179,10 +3179,54 @@ button {
   font-size: 11px;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .records-more {
   margin-top: 16px;
+}
+
+@media (max-width: 480px) {
+  .record-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .record-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .record-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .record-right {
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 46px;
+    box-sizing: border-box;
+  }
+
+  .record-amount {
+    font-size: 16px;
+  }
+
+  .record-fee {
+    font-size: 11px;
+    color: var(--color-text-sub);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    max-width: 55%;
+  }
 }
 
 /* ============ XMR 收款地址绑定 ============ */

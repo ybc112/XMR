@@ -91,45 +91,59 @@ function formatEventLog(eventLog) {
 
 /**
  * 扫描指定区块范围内的事件
+ * 优化：全部事件 topic 合并为一次 eth_getLogs 查询（OR 语义），
+ * 避免逐个事件查询导致公共节点限流/超时（此前 22 次/批 → 1 次/批）。
+ * 查询失败直接抛出，由 performScan 捕获：不推进扫描进度，下轮重试。
  */
 async function scanBlockRange(fromBlock, toBlock) {
+  // 合并所有事件 topic，一次查询（topics 第一层为 OR）
+  const eventTopics = EVENTS_TO_SCAN.map((name) =>
+    stakingContract.interface.getEvent(name).topicHash
+  );
+
+  const rawLogs = await provider.getLogs({
+    address: config.stakingContractAddress,
+    topics: [eventTopics],
+    fromBlock,
+    toBlock,
+  });
+
   const totalEvents = [];
-
-  for (const eventName of EVENTS_TO_SCAN) {
+  for (const rawLog of rawLogs) {
     try {
-      const eventFilter = stakingContract.filters[eventName]();
-      const logs = await stakingContract.queryFilter(
-        eventFilter,
-        fromBlock,
-        toBlock
-      );
+      const parsed = stakingContract.interface.parseLog(rawLog);
+      if (!parsed) continue;
 
-      for (const log of logs) {
-        const formatted = formatEventLog(log);
-        totalEvents.push(formatted);
+      const formatted = {
+        eventType: parsed.name,
+        txHash: rawLog.transactionHash,
+        blockNumber: rawLog.blockNumber,
+        logIndex: rawLog.index,
+        address: rawLog.address,
+        args: formatEventArgs(parsed.args, parsed.fragment),
+      };
+      totalEvents.push(formatted);
 
-        // 添加到对应分类
-        const category = EVENT_CATEGORY_MAP[eventName];
-        if (category) {
-          cache.addEvent(category, formatted);
-        }
-        // 添加到 all
-        cache.addToAll(formatted);
+      // 添加到对应分类
+      const category = EVENT_CATEGORY_MAP[parsed.name];
+      if (category) {
+        cache.addEvent(category, formatted);
+      }
+      // 添加到 all
+      cache.addToAll(formatted);
 
-        // 持久化到 SQLite（INSERT OR IGNORE 去重）
-        try {
-          db.insertEvent(formatted);
-        } catch (err) {
-          logger.debug(
-            `事件落库失败 (${formatted.txHash}#${formatted.logIndex}):`,
-            err.message
-          );
-        }
+      // 持久化到 SQLite（INSERT OR IGNORE 去重）
+      try {
+        db.insertEvent(formatted);
+      } catch (err) {
+        logger.debug(
+          `事件落库失败 (${formatted.txHash}#${formatted.logIndex}):`,
+          err.message
+        );
       }
     } catch (err) {
-      // 某个事件查询失败不影响其他事件
       logger.debug(
-        `扫描事件 ${eventName} (区块 ${fromBlock}-${toBlock}) 失败:`,
+        `解析日志失败 (${rawLog.transactionHash}#${rawLog.index}):`,
         err.message
       );
     }

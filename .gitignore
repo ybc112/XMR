@@ -34,3 +34,5 @@ work/
 CHANGE-REQUESTS.md
 # 后台前端构建产物
 admin-panel/dist/
+# 后端 SQLite 数据库
+backend/data/

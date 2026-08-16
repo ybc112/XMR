@@ -373,9 +373,18 @@ router.get(
     // 普通分页：db 过滤 + 仅对当前页用户并发补全链上信息
     const result = db.getRegisteredUsers({ page, limit, q });
     const items = await mapInBatches(result.items, 20, async (reg) => {
-      const info = await blockchain.getUserInfo(reg.address).catch(() => null);
+      let info = null;
+      let infoError = null;
+      try {
+        info = await blockchain.getUserInfo(reg.address);
+      } catch (err) {
+        infoError = err.message || String(err);
+        logger.warn(`getUserInfo failed for ${reg.address}: ${infoError}`);
+      }
       const power = await getUserComputingPower(reg.address);
-      return buildUserItem(reg, info, power);
+      const item = buildUserItem(reg, info, power);
+      if (infoError) item._error = infoError;
+      return item;
     });
 
     res.json(

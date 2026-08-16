@@ -153,25 +153,33 @@ function TreeTab({ address, onSwitchUser }) {
       </div>
     );
   }
-  if (!treeData) return <Typography.Text type="secondary">暂无数据</Typography.Text>;
+  const rootNode = toNode(treeData);
+  const hasChildren = (rootNode.children || []).length > 0;
 
   return (
-    <Tree
-      showLine
-      blockNode
-      expandedKeys={expandedKeys}
-      onExpand={(keys) => setExpandedKeys(keys)}
-      onSelect={(keys) => {
-        // 点击节点标题也切换展开/折叠
-        const key = keys[0];
-        if (!key) return;
-        setExpandedKeys((prev) =>
-          prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-        );
-      }}
-      treeData={[toNode(treeData)]}
-      style={{ background: '#fafafa', padding: 12, borderRadius: 6 }}
-    />
+    <>
+      {!hasChildren && (
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          该用户暂无直推下级
+        </Typography.Text>
+      )}
+      <Tree
+        showLine
+        blockNode
+        expandedKeys={expandedKeys}
+        onExpand={(keys) => setExpandedKeys(keys)}
+        onSelect={(keys) => {
+          // 点击节点标题也切换展开/折叠
+          const key = keys[0];
+          if (!key) return;
+          setExpandedKeys((prev) =>
+            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+          );
+        }}
+        treeData={[rootNode]}
+        style={{ background: '#fafafa', padding: 12, borderRadius: 6 }}
+      />
+    </>
   );
 }
 
@@ -464,9 +472,14 @@ export default function UserDetailDrawer({ address, open, onClose, onSwitchUser 
   }, [open, addr]);
 
   const switchUser = (target) => {
-    if (!target || target === addr) return;
+    if (!target) return;
+    if (target === addr) {
+      message.info('已是当前用户');
+      return;
+    }
     setAddr(target);
     loadDetail(target);
+    message.success('已切换到该用户详情');
   };
 
   const d = detail || {};

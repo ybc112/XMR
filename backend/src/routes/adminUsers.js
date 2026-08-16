@@ -475,13 +475,17 @@ router.get(
  */
 router.put(
   "/users/:address/remark",
-  logAction("更新用户备注"),
   asyncHandler(async (req, res) => {
     const addr = resolveAddress(req, res);
     if (!addr) return;
 
     const { remark } = req.body;
     db.setUserRemark(addr, remark);
+    logAction(req, {
+      action: "set-user-remark",
+      target: addr,
+      detail: String(remark || ""),
+    });
 
     res.json(
       successResponse({

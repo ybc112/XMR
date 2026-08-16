@@ -3064,10 +3064,11 @@ button {
 .record-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 4px;
+  gap: 12px;
+  padding: 14px 8px;
   border-bottom: 1px solid var(--color-border-light);
   transition: var(--transition-fast);
+  overflow: hidden;
 }
 
 .record-item:last-child {
@@ -3111,10 +3112,25 @@ button {
   flex: 1;
 }
 
+.record-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .record-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text-main);
+  flex-shrink: 0;
+}
+
+.record-time {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .record-meta {
@@ -3132,12 +3148,19 @@ button {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 0;
+  max-width: 55%;
+  min-width: 0;
 }
 
 .record-amount {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: -0.2px;
 }
 
 .record-amount-in {

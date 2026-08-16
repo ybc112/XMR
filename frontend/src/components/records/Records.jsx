@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { formatEther } from 'ethers'
 import Card from '../common/Card.jsx'
 import Button from '../common/Button.jsx'
 import Badge from '../common/Badge.jsx'
@@ -7,7 +8,7 @@ import Tabs from '../common/Tabs.jsx'
 import Skeleton from '../common/Skeleton.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatAddress, formatDateTime, shortHash } from '../../utils/format.js'
+import { formatAddress, formatDateTime, shortHash } from '../../utils/format.js'
 import { API_BASE_URL } from '../../config/contracts.js'
 import { getTxHashUrl } from '../../utils/format.js'
 
@@ -25,9 +26,22 @@ const RECORD_TYPE_MAP = {
   XMRWithdrawalProcessed: { label: 'XMR 提现到账', direction: 'out', symbol: 'XMR', amountKey: 'amount' }
 }
 
-function formatTokenAmount(value) {
+function formatTokenAmount(value, decimals = 4) {
   if (value === undefined || value === null) return '0'
-  return formatNumber(value.toString(), 4)
+  try {
+    const s = value.toString().trim()
+    if (!s || s === '0') return '0'
+    const ether = formatEther(s)
+    const num = Number(ether)
+    // 大金额保留 2 位小数，避免屏幕溢出；常规金额保留 decimals 位
+    const fractionDigits = num >= 10000 ? 2 : decimals
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: fractionDigits,
+    })
+  } catch {
+    return value.toString()
+  }
 }
 
 function RecordRow({ record }) {
@@ -62,21 +76,26 @@ function RecordRow({ record }) {
         )}
       </div>
       <div className="record-info">
-        <span className="record-title">{meta.label}</span>
-        <span className="record-meta">
-          {record.timestamp ? formatDateTime(record.timestamp) : `区块 ${record.blockNumber}`} · {shortHash(record.txHash, 8)}
+        <div className="record-title-line">
+          <span className="record-title">{meta.label}</span>
+          {record.timestamp && (
+            <span className="record-time">{formatDateTime(record.timestamp)}</span>
+          )}
+        </div>
+        <span className="record-meta" title={record.txHash}>
+          {shortHash(record.txHash, 10)} · 区块 {record.blockNumber}
         </span>
       </div>
       <div className="record-right">
         {amount !== null && amount !== undefined && (
-          <span className={`record-amount ${dirClass}`}>
+          <span className={`record-amount ${dirClass}`} title={`${formatTokenAmount(amount, 6)} ${meta.symbol}`}>
             {dirText}{formatTokenAmount(amount)} {meta.symbol}
           </span>
         )}
-        {fee !== null && fee !== undefined && Number(fee) > 0n ? (
+        {fee !== null && fee !== undefined && Number(fee) > 0 ? (
           <span className="record-fee">手续费 {formatTokenAmount(fee)} {meta.feeSymbol}</span>
         ) : null}
-        {note !== null && note !== undefined && Number(note) > 0n ? (
+        {note !== null && note !== undefined && Number(note) > 0 ? (
           <span className="record-fee">≈ {formatTokenAmount(note)} {meta.noteSymbol}</span>
         ) : null}
       </div>

@@ -143,6 +143,17 @@ button {
   opacity: 0.7;
 }
 
+/* GPU 合成提示：动画层提升为独立合成层，避免整页重绘（WebView 闪烁修复第 1 档） */
+.bg-glow-top,
+.bg-glow-bottom,
+.bg-particles::before,
+.bg-particles::after {
+  will-change: opacity, transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
 @keyframes particlesDrift {
   from { transform: translate(0, 0); }
   to { transform: translate(-110px, 60px); }
@@ -696,7 +707,7 @@ button {
 .input-wrapper:focus-within {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.1);
-  background: white;
+  background: var(--color-bg-card);
 }
 
 .input-error {
@@ -1493,6 +1504,12 @@ button {
   background: rgba(184, 134, 11, 0.05) !important;
 }
 
+.multisig-decoded {
+  font-size: 13px;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
 .generation-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1676,7 +1693,7 @@ button {
 
 .exchange-input-wrapper:focus-within {
   border-color: var(--color-gold);
-  background: white;
+  background: var(--color-bg-card);
   box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.1);
 }
 
@@ -2290,7 +2307,7 @@ button {
 }
 
 .chat-message-bot .chat-bubble {
-  background: white;
+  background: var(--color-bg-card);
   color: var(--color-text-main);
   border-bottom-left-radius: 4px;
   box-shadow: var(--shadow-sm);
@@ -2308,7 +2325,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  background: white;
+  background: var(--color-bg-card);
   border-top: 1px solid var(--color-border);
 }
 
@@ -2333,7 +2350,7 @@ button {
   padding: 12px 16px;
   display: flex;
   gap: 8px;
-  background: white;
+  background: var(--color-bg-card);
   border-top: 1px solid var(--color-border);
 }
 
@@ -2585,7 +2602,7 @@ button {
 
 .network-node-content:hover {
   border-color: rgba(184, 134, 11, 0.4);
-  background: white;
+  background: var(--color-bg-card);
 }
 
 .network-node-root > .network-node-content {
@@ -2600,11 +2617,53 @@ button {
   min-width: 0;
 }
 
+.network-node-line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.network-node-depth {
+  display: none;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(184, 134, 11, 0.12);
+  color: var(--color-gold);
+  white-space: nowrap;
+}
+
+.network-node-toggle {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-sub);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-base);
+}
+
+.network-node-toggle:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
 .network-node-address {
   font-size: 14px;
   font-weight: 700;
   color: var(--color-slate);
   font-family: 'SF Mono', 'Fira Code', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .network-node-meta {
@@ -2778,14 +2837,14 @@ button {
 
 .earning-item:hover {
   border-color: rgba(184, 134, 11, 0.35);
-  background: white;
+  background: var(--color-bg-card);
 }
 
 .earning-icon {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: white;
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   color: var(--color-gold);
   display: flex;
@@ -2990,4 +3049,227 @@ button {
   .hide-desktop {
     display: block;
   }
+}
+
+/* ============ 资金明细页 ============ */
+.records-filter {
+  margin-bottom: 16px;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: var(--transition-fast);
+}
+
+.record-item:last-child {
+  border-bottom: none;
+}
+
+.record-item:hover {
+  background: var(--color-bg-elevated);
+}
+
+.record-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.record-icon-in {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-green);
+}
+
+.record-icon-out {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-red);
+}
+
+.record-icon-swap {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-blue);
+}
+
+.record-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.record-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.record-meta {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.record-amount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-amount-in {
+  color: var(--color-green);
+}
+
+.record-amount-out {
+  color: var(--color-red);
+}
+
+.record-amount-swap {
+  color: var(--color-blue);
+}
+
+.record-fee {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-more {
+  margin-top: 16px;
+}
+
+/* ============ XMR 收款地址绑定 ============ */
+.xmr-address-block {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.xmr-address-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.xmr-address-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-sub);
+}
+
+.xmr-address-edit-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-gold);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.xmr-address-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  color: var(--color-text-main);
+  word-break: break-all;
+}
+
+.xmr-address-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.xmr-address-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.xmr-address-input:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.1);
+}
+
+.xmr-address-tip {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.xmr-modal-address {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text-main);
+  word-break: break-all;
+}
+
+.xmr-modal-address-warn {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--color-red);
+}
+
+/* ============ 提现快捷金额 ============ */
+.quick-amounts {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.quick-amount-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-main);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.quick-amount-btn:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
 }

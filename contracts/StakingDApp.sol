@@ -48,6 +48,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256 public constant XMR_WITHDRAWAL_MIN = 0.05 * 10 ** 18;
     uint256 public constant DAY_SECONDS = 86400;
     uint256 public constant MAX_CLAIM_DAYS = 30;
+    uint256 public constant WITHDRAW_UNIT = 10 * 10 ** 18;
 
     bool public paused;
 
@@ -60,6 +61,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     mapping(address => bool) public admins;
     mapping(address => uint256) public addressToMemberId;
     mapping(uint256 => address) public memberIdToAddress;
+    mapping(address => string) public xmrAddress;
+    mapping(address => uint256) public userComputingPower;
 
     uint256 public nextMemberId = 10001;
     uint256 public lastSettlementDay;
@@ -73,7 +76,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     event TeamReward(address indexed receiver, address indexed investor, uint8 level, uint256 amount);
     event Exited(address indexed user, uint256 totalEarned);
     event USDTWithdrawn(address indexed user, uint256 amount, uint256 fee);
-    event XMRWithdrawalRequested(address indexed user, uint256 amount, uint256 fee);
+    event XMRWithdrawalRequested(address indexed user, uint256 amount, uint256 fee, string xmrAddr);
     event XMRWithdrawalProcessed(address indexed user, uint256 amount);
     event FlashExchanged(address indexed user, uint256 xmrAmount, uint256 usdtAmount);
     event DailySettlement(uint256 day, uint256 xmrPrice);
@@ -86,6 +89,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     event WithdrawFeeUpdated(uint256 oldFee, uint256 newFee);
     event XMRPriceUpdated(uint256 oldPrice, uint256 newPrice);
     event LevelUpdated(address indexed user, uint8 oldLevel, uint8 newLevel);
+    event XMRAddressSet(address indexed user, string xmrAddr);
+    event UserComputingPowerSet(address indexed user, uint256 power);
+    event BalanceAdjusted(address indexed user, string kind, int256 delta, address operator);
 
     constructor(address _usdt, address _xmr) Ownable(msg.sender) {
         usdtToken = IERC20(_usdt);
@@ -129,13 +135,13 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             require(users[_referrer].isRegistered, "Referrer not registered");
         }
 
-        // 会员 ID 随机生成（10001 ~ 99999），非顺序递增
+        // 会员 ID 随机生成（10001 ~ 1010000），非顺序递增
         uint256 salt = nextMemberId++;
         uint256 memberId;
         do {
             memberId = 10001 + uint256(keccak256(abi.encodePacked(
                 block.prevrandao, block.timestamp, msg.sender, salt++
-            ))) % 89999;
+            ))) % 999999;
         } while (memberIdToAddress[memberId] != address(0));
         users[msg.sender].isRegistered = true;
         users[msg.sender].referrer = _referrer;
@@ -154,7 +160,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     }
 
     function invest(uint256 _amount) external nonReentrant notPaused notBlacklisted {
-        require(_amount > 0, "Amount must be > 0");
+        require(_amount >= MIN_INVESTMENT, "Investment below 100 USDT");
+        require(_amount % MIN_INVESTMENT == 0, "Investment must be multiple of 100");
         require(users[msg.sender].isRegistered, "Not registered");
 
         User storage user = users[msg.sender];
@@ -195,7 +202,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
         user.lastClaimDay = currentDay;
 
-        uint256 effectiveRate = dailyRate * computingPower / 100;
+        uint256 power = userComputingPower[msg.sender] > 0 ? userComputingPower[msg.sender] : computingPower;
+        uint256 effectiveRate = dailyRate * power / 100;
         uint256 usdtReward = user.personalAmount * effectiveRate * daysPassed / 10000;
 
         uint256 cappedReward = _applyExitLimit(msg.sender, usdtReward);
@@ -239,6 +247,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
     function withdrawUSDT(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Amount must be > 0");
+        require(_amount % WITHDRAW_UNIT == 0, "Withdrawal must be multiple of 10");
 
         User storage user = users[msg.sender];
         require(user.pendingUSDT >= _amount, "Insufficient balance");
@@ -254,8 +263,15 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         emit USDTWithdrawn(msg.sender, actual, fee);
     }
 
+    function setXMRAddress(string calldata _addr) external {
+        require(bytes(_addr).length >= 90 && bytes(_addr).length <= 110, "Invalid XMR address length");
+        xmrAddress[msg.sender] = _addr;
+        emit XMRAddressSet(msg.sender, _addr);
+    }
+
     function requestXMRWithdrawal(uint256 _amount) external nonReentrant {
         require(_amount >= XMR_WITHDRAWAL_MIN, "Below minimum withdrawal");
+        require(bytes(xmrAddress[msg.sender]).length > 0, "XMR address not set");
 
         User storage user = users[msg.sender];
         require(user.pendingXMR >= _amount, "Insufficient XMR balance");
@@ -270,7 +286,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             xmrToken.burn(fee);
         }
 
-        emit XMRWithdrawalRequested(msg.sender, actual, fee);
+        emit XMRWithdrawalRequested(msg.sender, actual, fee, xmrAddress[msg.sender]);
     }
 
     function dailySettlement(uint256 _xmrPrice) external onlyAdmin {
@@ -308,6 +324,35 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     function setComputingPower(uint256 _power) external onlyOwner {
         emit ComputingPowerUpdated(computingPower, _power);
         computingPower = _power;
+    }
+
+    function setUserComputingPower(address _user, uint256 _power) external onlyOwner {
+        require(_power <= 10000, "Power too high");
+        userComputingPower[_user] = _power;
+        emit UserComputingPowerSet(_user, _power);
+    }
+
+    function adjustUserUSDT(address _user, int256 _delta) external onlyOwner {
+        User storage u = users[_user];
+        if (_delta > 0) {
+            u.pendingUSDT += uint256(_delta);
+        } else {
+            uint256 d = uint256(-_delta);
+            u.pendingUSDT = u.pendingUSDT > d ? u.pendingUSDT - d : 0;
+        }
+        emit BalanceAdjusted(_user, "USDT", _delta, msg.sender);
+    }
+
+    function adjustUserXMR(address _user, int256 _delta) external onlyOwner {
+        User storage u = users[_user];
+        if (_delta > 0) {
+            xmrToken.mint(address(this), uint256(_delta));
+            u.pendingXMR += uint256(_delta);
+        } else {
+            uint256 d = uint256(-_delta);
+            u.pendingXMR = u.pendingXMR > d ? u.pendingXMR - d : 0;
+        }
+        emit BalanceAdjusted(_user, "XMR", _delta, msg.sender);
     }
 
     function setWithdrawFee(uint256 _fee) external onlyOwner {
@@ -542,6 +587,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 maxAreaVolume;
         uint256 memberId;
         uint256 xmrWithdrawalPending;
+        string xmrAddress;
     }
 
     function getUserInfo(address _user) external view returns (UserInfoView memory) {
@@ -560,7 +606,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             teamTotalVolume: user.teamTotalVolume,
             maxAreaVolume: user.maxAreaVolume,
             memberId: addressToMemberId[_user],
-            xmrWithdrawalPending: user.xmrWithdrawalPending
+            xmrWithdrawalPending: user.xmrWithdrawalPending,
+            xmrAddress: xmrAddress[_user]
         });
     }
 
@@ -631,7 +678,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         if (daysPassed == 0) return (0, 0);
         if (daysPassed > MAX_CLAIM_DAYS) daysPassed = MAX_CLAIM_DAYS;
 
-        uint256 effectiveRate = dailyRate * computingPower / 100;
+        uint256 power = userComputingPower[_user] > 0 ? userComputingPower[_user] : computingPower;
+        uint256 effectiveRate = dailyRate * power / 100;
         usdtValue = user.personalAmount * effectiveRate * daysPassed / 10000;
 
         uint256 remaining = user.exitLimit > user.totalEarned

@@ -325,6 +325,15 @@ export function useStaking() {
     return tx
   }, [isConnected, stakingContract])
 
+  const setXMRAddress = useCallback(async (xmrAddr) => {
+    if (!isConnected) throw new Error('请先连接钱包')
+    const contract = stakingContract(true)
+    if (!contract) throw new Error('合约未初始化')
+    const tx = await contract.setXMRAddress(xmrAddr)
+    await tx.wait()
+    return tx
+  }, [isConnected, stakingContract])
+
   return {
     register,
     invest,
@@ -332,6 +341,7 @@ export function useStaking() {
     flashExchange,
     withdrawUSDT,
     requestXMRWithdrawal,
+    setXMRAddress,
     getUserInfo,
     getContractStats,
     getDirectReferrals,

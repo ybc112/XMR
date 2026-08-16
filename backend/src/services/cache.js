@@ -4,6 +4,18 @@
  */
 const logger = require("../utils/logger");
 
+// 事件类型 -> 资金方向映射（资金明细页使用）
+const FLOW_DIRECTION_MAP = {
+  Invested: "out",
+  StaticRewardClaimed: "in",
+  GenerationReward: "in",
+  TeamReward: "in",
+  FlashExchanged: "swap",
+  USDTWithdrawn: "out",
+  XMRWithdrawalRequested: "out",
+  XMRWithdrawalProcessed: "out",
+};
+
 class CacheService {
   constructor() {
     // 事件存储：按事件类型分类存储
@@ -81,8 +93,12 @@ class CacheService {
 
   /**
    * 获取指定地址相关的所有事件
+   * @param {string} address - 用户地址
+   * @param {number} page - 页码
+   * @param {number} limit - 每页条数
+   * @param {"all"|"in"|"out"} direction - 资金方向过滤（资金明细用）
    */
-  getEventsByAddress(address, page, limit) {
+  getEventsByAddress(address, page, limit, direction = "all") {
     const addr = address.toLowerCase();
     const all = this.events.all.filter((e) => {
       // 检查事件的 args 中是否有匹配的地址
@@ -93,7 +109,13 @@ class CacheService {
       );
     });
 
-    const sorted = all.sort((a, b) => {
+    // 资金方向过滤
+    let filtered = all;
+    if (direction !== "all") {
+      filtered = all.filter((e) => FLOW_DIRECTION_MAP[e.eventType] === direction);
+    }
+
+    const sorted = filtered.sort((a, b) => {
       if (b.blockNumber !== a.blockNumber) {
         return b.blockNumber - a.blockNumber;
       }

@@ -74,15 +74,43 @@ router.get(
 
 /**
  * GET /api/user/:address/events - 获取用户相关的事件
+ * query: page, limit, direction=all|in|out（资金明细方向过滤）, withTimestamp=1（补充区块时间戳）
  */
 router.get(
   "/:address/events",
   asyncHandler(async (req, res) => {
     const { address } = req.params;
     const { page, limit } = parsePagination(req.query);
-    const result = cache.getEventsByAddress(address, page, limit);
+    const direction = ["all", "in", "out"].includes(req.query.direction)
+      ? req.query.direction
+      : "all";
+    const result = cache.getEventsByAddress(address, page, limit, direction);
+
+    let items = result.items;
+
+    // 按需补充区块时间戳（去重后并行查询，结果写入 TTL 缓存）
+    if (req.query.withTimestamp === "1" && items.length > 0) {
+      const blockNumbers = [...new Set(items.map((e) => e.blockNumber))];
+      await Promise.all(
+        blockNumbers.map(async (bn) => {
+          const key = `block-ts-${bn}`;
+          if (cache.get(key) !== null) return;
+          try {
+            const block = await blockchain.provider.getBlock(bn);
+            if (block) cache.set(key, block.timestamp, 24 * 3600 * 1000);
+          } catch (err) {
+            // 单个区块查询失败不影响整体返回
+          }
+        })
+      );
+      items = items.map((e) => ({
+        ...e,
+        timestamp: cache.get(`block-ts-${e.blockNumber}`),
+      }));
+    }
+
     res.json(
-      successResponse(buildPagination(result.items, result.total, page, limit))
+      successResponse(buildPagination(items, result.total, page, limit))
     );
   })
 );

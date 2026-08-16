@@ -203,7 +203,13 @@ const CONTRACT_ERROR_MAP = {
   'Insufficient balance': '余额不足',
   'Below minimum withdrawal': '低于最低提现数量',
   'Rate exceeds 100%': '比例不能超过 100%',
-  'User has exited': '您已达到 3 倍出局上限，请重新投资'
+  'User has exited': '您已达到 3 倍出局上限，请重新投资',
+  'Investment below 100 USDT': '最低投资 100 USDT',
+  'Investment must be multiple of 100': '投资金额必须是 100 的整数倍',
+  'Withdrawal must be multiple of 10': '提现金额必须是 10 的整数倍',
+  'XMR address not set': '请先添加 XMR 收款地址',
+  'Invalid XMR address length': 'XMR 收款地址长度不正确',
+  'Power too high': '算力值超出上限'
 }
 
 /**

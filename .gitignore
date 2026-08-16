@@ -29,3 +29,8 @@ images/
 
 # 验证临时产物
 work/
+
+# 内部需求文档（含服务器信息，不入库）
+CHANGE-REQUESTS.md
+# 后台前端构建产物
+admin-panel/dist/

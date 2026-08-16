@@ -1,0 +1,14 @@
+body {
+  margin: 0;
+  background: #f5f6f8;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono,
+.ant-table-cell .mono {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+#root {
+  min-height: 100vh;
+}

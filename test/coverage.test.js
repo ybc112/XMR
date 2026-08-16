@@ -262,7 +262,6 @@ describe("Coverage Enhancement Tests", function () {
         it("Should return 0 estimate for below-minimum user", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
-            await staking.connect(u).invest(ethers.parseEther("50"));
             const [usdtVal] = await staking.estimateStaticReward(u.address);
             expect(usdtVal).to.equal(0);
         });
@@ -335,6 +334,7 @@ describe("Coverage Enhancement Tests", function () {
         it("Should handle XMR withdrawal with exactly 0 fee when fee rate is 0", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100000"));
+            await staking.connect(u).setXMRAddress("4" + "B".repeat(94));
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             await staking.setWithdrawFee(0);

@@ -3,6 +3,7 @@
  * 加载并校验所有必需的环境变量
  */
 require("dotenv").config();
+const path = require("path");
 
 const required = (key, defaultValue) => {
   const value = process.env[key];
@@ -36,8 +37,21 @@ const config = {
   // 管理员私钥
   adminPrivateKey: required("ADMIN_PRIVATE_KEY", ""),
 
-  // 管理员API密钥
-  adminApiKey: required("ADMIN_API_KEY", "default-admin-key-change-me"),
+  // 管理员API密钥（必填，无默认值）
+  adminApiKey: required("ADMIN_API_KEY"),
+
+  // 管理后台 JWT 密钥（必填，无默认值）
+  adminJwtSecret: required("ADMIN_JWT_SECRET"),
+
+  // 引导管理员账号（首次启动时若 admin_users 表为空则创建）
+  bootstrapAdminUsername: required("ADMIN_USERNAME"),
+  bootstrapAdminPassword: required("ADMIN_PASSWORD"),
+
+  // SQLite 数据库文件路径（默认 backend 同级 data/xmr.db）
+  dbPath: required("DB_PATH", path.join(__dirname, "..", "..", "data", "xmr.db")),
+
+  // CORS 允许的来源（逗号分隔，空 = 允许所有，启动时会打警告）
+  corsOrigins: required("CORS_ORIGINS", ""),
 
   // 事件扫描配置
   startBlock: parseInt(required("START_BLOCK", "0"), 10),

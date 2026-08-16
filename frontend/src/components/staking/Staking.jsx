@@ -8,7 +8,7 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useContracts } from '../../hooks/useContracts.js'
 import { useToast } from '../common/Toast.jsx'
-import { formatNumber, formatEther, getLevelName, formatAddress, safeNumber, parseContractError, formatDailyRate } from '../../utils/format.js'
+import { formatNumber, formatEther, getLevelName, formatAddress, safeNumber, parseContractError } from '../../utils/format.js'
 import { ethers } from 'ethers'
 
 export default function Staking() {
@@ -105,6 +105,15 @@ export default function Staking() {
   const handleInvest = async () => {
     if (!investAmount || parseFloat(investAmount) <= 0) {
       showError('请输入投资金额')
+      return
+    }
+    const amount = parseFloat(investAmount)
+    if (amount < 100) {
+      showError('最低投资 100 USDT')
+      return
+    }
+    if (amount % 100 !== 0) {
+      showError('投资金额必须是 100 的整数倍')
       return
     }
     setInvesting(true)
@@ -218,16 +227,6 @@ export default function Staking() {
     label: '投资',
     content: isRegistered ? (
       <div className="form-section">
-        <div className="rate-power-grid">
-          <div className="rate-power-item">
-            <span className="rate-power-label">当前日化率</span>
-            <span className="rate-power-value">{stats ? formatDailyRate(stats.dailyRate, stats.computingPower) : '0.00%'}</span>
-          </div>
-          <div className="rate-power-item">
-            <span className="rate-power-label">当前算力</span>
-            <span className="rate-power-value">{stats ? Number(stats.computingPower) : 0}</span>
-          </div>
-        </div>
         <Input
           label="投资金额"
           value={investAmount}

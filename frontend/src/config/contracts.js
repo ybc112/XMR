@@ -1,11 +1,12 @@
 // 合约地址配置 (BSC 测试网, chainId 97)
-// 2026-08-14 测试网部署 v2（团队奖改为静态收益基数 + 会员 ID 随机化）
+// 2026-08-15 测试网部署 v3（ID 容量 100 万、投资 100 倍数、提现 10 倍数、
+// XMR 地址绑定、按用户算力、用户余额调整）
 // 部署记录: deploy-state-testnet.json
 export const CONTRACT_ADDRESSES = {
-  StakingDApp: '0xdb29E9eB1149d33E0979285eacf56572fACA62C9',
-  XMRToken: '0x7A4b49cCAaDF69C4FCfd2223F8E3e30dAAb9F123',
-  MultiSigWallet: '0xAEb8B096a717AeF05F169707968623C2c9F97650',
-  USDT: '0x7BA7b94d0c55A6761bA8bFdE079a934631f656c7' // MockUSDT（测试 U，公开 mint）
+  StakingDApp: '0xb1748538616222F30E8031e13E14810B8C26B2c3',
+  XMRToken: '0x89EBa963BcA8C91502747f4F1528C2A70dB08BeF',
+  MultiSigWallet: '0xd47995d173a2fBCF4426aD83eE2F159C8B583295',
+  USDT: '0xc19dbe92987AEe44E7A0442807518532ef0A517a' // MockUSDT（测试 U，公开 mint）
 }
 
 // 当前网络配置：BSC 测试网
@@ -48,3 +49,6 @@ export const USDT_DECIMALS = 18
 
 // 链上 explorer (当前测试网)
 export const BSC_EXPLORER = 'https://testnet.bscscan.com'
+
+// 后端 API 地址（资金明细等只读数据走后端缓存；可用 VITE_API_BASE_URL 覆盖）
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'

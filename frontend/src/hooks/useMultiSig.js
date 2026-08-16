@@ -110,6 +110,17 @@ export function useMultiSig() {
     }
   }, [getContract])
 
+  const isConfirmedBy = useCallback(async (txId, address) => {
+    const contract = getContract(false)
+    if (!contract || !address) return false
+    try {
+      return await contract.confirmations(txId, address)
+    } catch (err) {
+      console.error('查询签名状态失败:', err)
+      return false
+    }
+  }, [getContract])
+
   return {
     submitTransaction,
     confirmTransaction,
@@ -119,6 +130,7 @@ export function useMultiSig() {
     getTransaction,
     getTransactionCount,
     isOwner,
-    required
+    required,
+    isConfirmedBy
   }
 }

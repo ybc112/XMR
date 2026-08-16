@@ -13,7 +13,6 @@ import { LEVEL_INFO, GENERATION_RATES } from '../../utils/constants.js'
 import { BSC_EXPLORER } from '../../config/contracts.js'
 
 const MAX_NETWORK_DEPTH = 4
-
 export default function Team() {
   const { account, isConnected, connectWallet } = useWeb3()
   const {
@@ -71,47 +70,66 @@ export default function Team() {
     if (!account) return
     setNetworkLoading(true)
     try {
-      const visited = new Set()
+      // BFS 按层并行加载：同层节点的 RPC 用 Promise.all 并发，避免逐节点串行
+      const nodeMap = new Map()
 
-      const buildNode = async (address, depth) => {
-        const node = { address, depth, children: [] }
-        const [info, directCount] = await Promise.all([
-          getUserInfo(address),
-          getDirectReferralCount(address)
-        ])
-        if (info) {
-          node.memberId = info.memberId ? Number(info.memberId) : 0
-          node.personalAmount = info.personalAmount || 0n
-          node.level = info.level !== undefined ? Number(info.level) : 0
-          node.referralCount = Number(directCount)
-        } else {
-          node.memberId = 0
-          node.personalAmount = 0n
-          node.level = 0
-          node.referralCount = 0
-        }
-
-        if (depth < MAX_NETWORK_DEPTH && !visited.has(address.toLowerCase())) {
-          visited.add(address.toLowerCase())
-          const refs = await getDirectReferrals(address)
-          for (const ref of refs) {
-            const child = await buildNode(ref, depth + 1)
-            node.children.push(child)
-          }
-        }
-
-        return node
+      const fetchNodes = async (addresses, depth) => {
+        const results = await Promise.all(
+          addresses.map(async (addr) => {
+            const [info, directCount] = await Promise.all([
+              getUserInfo(addr),
+              getDirectReferralCount(addr)
+            ])
+            return {
+              address: addr,
+              depth,
+              memberId: info?.memberId ? Number(info.memberId) : 0,
+              personalAmount: info?.personalAmount || 0n,
+              level: info?.level !== undefined ? Number(info.level) : 0,
+              referralCount: Number(directCount),
+              children: []
+            }
+          })
+        )
+        results.forEach((n) => nodeMap.set(n.address.toLowerCase(), n))
+        return results
       }
 
-      const root = await buildNode(account, 0)
-      setNetworkTree(root)
+      const [rootNode] = await fetchNodes([account], 0)
+
+      let currentLayer = [rootNode]
+      for (let depth = 0; depth < MAX_NETWORK_DEPTH && currentLayer.length > 0; depth++) {
+        // 取所有当前层节点的直推列表（并行）
+        const referralLists = await Promise.all(
+          currentLayer.map((n) => getDirectReferrals(n.address))
+        )
+        // 收集下一层需要加载信息的地址（去重）
+        const nextAddrs = []
+        referralLists.forEach((refs) => {
+          refs.forEach((r) => {
+            if (!nodeMap.has(r.toLowerCase())) nextAddrs.push(r)
+          })
+        })
+        if (nextAddrs.length === 0) break
+        const nextNodes = await fetchNodes(nextAddrs, depth + 1)
+        // 建立父子关系
+        currentLayer.forEach((n, i) => {
+          referralLists[i].forEach((r) => {
+            const child = nodeMap.get(r.toLowerCase())
+            if (child) n.children.push(child)
+          })
+        })
+        currentLayer = nextNodes
+      }
+
+      setNetworkTree(rootNode)
     } catch (err) {
       console.error('加载推荐网络失败:', err)
       showError('加载推荐网络失败')
     } finally {
       setNetworkLoading(false)
     }
-  }, [account, getUserInfo, getDirectReferrals, showError])
+  }, [account, getUserInfo, getDirectReferrals, getDirectReferralCount, showError])
 
   useEffect(() => {
     if (isConnected && account) {
@@ -163,27 +181,48 @@ export default function Team() {
   const nextPersonalReq = nextLevelInfo ? nextLevelInfo.personalReq : currentLevelInfo.personalReq
   const personalProgressMax = Math.max(nextPersonalReq, 1)
 
-  const NetworkNode = ({ node }) => (
-    <div className={`network-node ${node.depth === 0 ? 'network-node-root' : ''}`}>
-      <div className="network-node-content">
-        <div className="network-node-main">
-          <span className="network-node-address">{formatAddress(node.address)}</span>
-          <span className="network-node-meta">会员 ID: {node.memberId || '-'} · 直推 {node.referralCount} 人</span>
+  // 层级徽章 + 展开/收起：默认展开到第 2 层，深层点击展开，避免首屏渲染过多节点
+  const NetworkNode = ({ node, defaultExpanded = true }) => {
+    const [expanded, setExpanded] = useState(defaultExpanded)
+    const hasChildren = node.children.length > 0
+    return (
+      <div className={`network-node ${node.depth === 0 ? 'network-node-root' : ''}`}>
+        <div className="network-node-content">
+          <div className="network-node-main">
+            <div className="network-node-line1">
+              {node.depth > 0 && <span className="network-node-depth">L{node.depth}</span>}
+              <span className="network-node-address">{formatAddress(node.address)}</span>
+              <span className="level-badge">{getLevelName(node.level)}</span>
+            </div>
+            <span className="network-node-meta">会员 ID: {node.memberId || '-'} · 直推 {node.referralCount} 人 · {formatNumber(node.personalAmount)} USDT</span>
+          </div>
+          <div className="network-node-stats">
+            <span className="network-node-amount">{formatNumber(node.personalAmount)} USDT</span>
+            {hasChildren && (
+              <button
+                type="button"
+                className="network-node-toggle"
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded ? `收起 ▴` : `展开 ${node.children.length} 人 ▾`}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="network-node-stats">
-          <span className="network-node-amount">{formatNumber(node.personalAmount)} USDT</span>
-          <span className="level-badge">{getLevelName(node.level)}</span>
-        </div>
+        {hasChildren && expanded && (
+          <div className="network-node-children">
+            {node.children.map((child) => (
+              <NetworkNode
+                key={`${child.address}-${child.depth}`}
+                node={child}
+                defaultExpanded={child.depth < 2}
+              />
+            ))}
+          </div>
+        )}
       </div>
-      {node.children.length > 0 && (
-        <div className="network-node-children">
-          {node.children.map((child) => (
-            <NetworkNode key={`${child.address}-${child.depth}`} node={child} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
+    )
+  }
 
   const directListContent = (
     <>

@@ -1,7 +1,14 @@
 import React, { useState } from 'react'
 
-export default function Tabs({ tabs, defaultActive = 0, className = '' }) {
-  const [active, setActive] = useState(defaultActive)
+export default function Tabs({ tabs, defaultActive = 0, active: controlledActive, onChange, className = '' }) {
+  const [innerActive, setInnerActive] = useState(defaultActive)
+  const isControlled = controlledActive !== undefined && controlledActive !== null
+  const active = isControlled ? controlledActive : innerActive
+
+  const handleSelect = (idx) => {
+    if (!isControlled) setInnerActive(idx)
+    if (onChange) onChange(idx)
+  }
 
   return (
     <div className={`tabs ${className}`}>
@@ -10,15 +17,17 @@ export default function Tabs({ tabs, defaultActive = 0, className = '' }) {
           <button
             key={idx}
             className={`tab-item ${active === idx ? 'tab-item-active' : ''}`}
-            onClick={() => setActive(idx)}
+            onClick={() => handleSelect(idx)}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div className="tab-panel">
-        {tabs[active]?.content}
-      </div>
+      {tabs[active]?.content !== undefined && tabs[active]?.content !== null && (
+        <div className="tab-panel">
+          {tabs[active].content}
+        </div>
+      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@ const {
 describe("Comprehensive StakingDApp Tests", function () {
     let staking, usdt, xmrToken, owner, admin, signers;
     const MIN100 = ethers.parseEther("100");
+    const XMR_ADDR = "4" + "B".repeat(94);
 
     async function freshSetup() {
         ({ staking, usdt, xmrToken, owner, admin, signers } = await deployContracts());
@@ -39,7 +40,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(info.referrer).to.equal(root.address);
         });
 
-        it("1.3 Should assign random member IDs in range 10001-99999, unique", async function () {
+        it("1.3 Should assign random member IDs in range 10001-1010000, unique", async function () {
             await staking.connect(signers[0]).register(ZERO);
             await staking.connect(signers[1]).register(signers[0].address);
             await staking.connect(signers[2]).register(signers[0].address);
@@ -48,7 +49,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             const id2 = await staking.addressToMemberId(signers[2].address);
             for (const id of [id0, id1, id2]) {
                 expect(id).to.be.gte(10001);
-                expect(id).to.be.lte(99999);
+                expect(id).to.be.lte(1010000);
             }
             expect(id0).to.not.equal(id1);
             expect(id1).to.not.equal(id2);
@@ -103,10 +104,10 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("2.2 Should accumulate personal amount on multiple investments", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            await staking.connect(u).invest(ethers.parseEther("50"));
+            await staking.connect(u).invest(ethers.parseEther("100"));
             const info = await staking.getUserInfo(u.address);
-            expect(info.personalAmount).to.equal(ethers.parseEther("150"));
-            expect(info.exitLimit).to.equal(ethers.parseEther("450"));
+            expect(info.personalAmount).to.equal(ethers.parseEther("200"));
+            expect(info.exitLimit).to.equal(ethers.parseEther("600"));
         });
 
         it("2.3 Should reject investment from unregistered user", async function () {
@@ -114,10 +115,20 @@ describe("Comprehensive StakingDApp Tests", function () {
                 .to.be.revertedWith("Not registered");
         });
 
-        it("2.4 Should reject zero investment", async function () {
+        it("2.4 Should reject zero and below-minimum investment", async function () {
             await staking.connect(signers[0]).register(ZERO);
             await expect(staking.connect(signers[0]).invest(0))
-                .to.be.revertedWith("Amount must be > 0");
+                .to.be.revertedWith("Investment below 100 USDT");
+            await expect(staking.connect(signers[0]).invest(ethers.parseEther("99")))
+                .to.be.revertedWith("Investment below 100 USDT");
+        });
+
+        it("2.4b Should reject investment not multiple of 100", async function () {
+            await staking.connect(signers[0]).register(ZERO);
+            await expect(staking.connect(signers[0]).invest(ethers.parseEther("150")))
+                .to.be.revertedWith("Investment must be multiple of 100");
+            await expect(staking.connect(signers[0]).invest(ethers.parseEther("1000.5")))
+                .to.be.revertedWith("Investment must be multiple of 100");
         });
 
         it("2.5 Should reject investment when paused", async function () {
@@ -237,7 +248,6 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("3.10 Should reject claim below minimum investment", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
-            await staking.connect(u).invest(ethers.parseEther("50"));
             await expect(staking.connect(u).claimStaticReward())
                 .to.be.revertedWith("Below min investment");
         });
@@ -332,11 +342,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(info.pendingUSDT).to.equal(gen1to12);
         });
 
-        it("4.6 Should not pay generation reward to inactive ancestor (< 100U)", async function () {
+        it("4.6 Should not pay generation reward to inactive ancestor", async function () {
             const root = signers[0];
             const child = signers[1];
             await staking.connect(root).register(ZERO);
-            await staking.connect(root).invest(ethers.parseEther("50"));
             await registerAndInvest(staking, child, root.address, MIN100);
             const info = await staking.getUserInfo(root.address);
             expect(info.pendingUSDT).to.equal(0);
@@ -735,10 +744,23 @@ describe("Comprehensive StakingDApp Tests", function () {
                 .to.be.revertedWith("Amount must be > 0");
         });
 
+        it("8.2b Should reject withdrawal not multiple of 10", async function () {
+            const root = signers[0];
+            const child = signers[1];
+            await registerAndInvest(staking, root, ZERO, MIN100);
+            await registerAndInvest(staking, child, root.address, MIN100);
+            await expect(staking.connect(root).withdrawUSDT(ethers.parseEther("24")))
+                .to.be.revertedWith("Withdrawal must be multiple of 10");
+            await expect(staking.connect(root).withdrawUSDT(ethers.parseEther("15")))
+                .to.be.revertedWith("Withdrawal must be multiple of 10");
+            await staking.connect(root).withdrawUSDT(ethers.parseEther("10"));
+            expect((await staking.getUserInfo(root.address)).pendingUSDT).to.equal(0);
+        });
+
         it("8.3 Should reject withdrawal exceeding pending balance", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
-            await expect(staking.connect(u).withdrawUSDT(E18))
+            await expect(staking.connect(u).withdrawUSDT(ethers.parseEther("10")))
                 .to.be.revertedWith("Insufficient balance");
         });
 
@@ -774,6 +796,7 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("9.1 Should request XMR withdrawal with 5% fee", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
+            await staking.connect(u).setXMRAddress(XMR_ADDR);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const xmrAmount = (await staking.getUserInfo(u.address)).pendingXMR;
@@ -792,9 +815,29 @@ describe("Comprehensive StakingDApp Tests", function () {
                 .to.be.revertedWith("Below minimum withdrawal");
         });
 
+        it("9.2b Should reject withdrawal before setting XMR address", async function () {
+            const u = signers[0];
+            await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
+            await advanceDays(1);
+            await staking.connect(u).claimStaticReward();
+            const xmrAmount = (await staking.getUserInfo(u.address)).pendingXMR;
+            await expect(staking.connect(u).requestXMRWithdrawal(xmrAmount))
+                .to.be.revertedWith("XMR address not set");
+        });
+
+        it("9.2c Should reject invalid XMR address length", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            await expect(staking.connect(u).setXMRAddress("4" + "B".repeat(50)))
+                .to.be.revertedWith("Invalid XMR address length");
+            await expect(staking.connect(u).setXMRAddress("4" + "B".repeat(120)))
+                .to.be.revertedWith("Invalid XMR address length");
+        });
+
         it("9.3 Should accept withdrawal at exactly 0.05 XMR", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100000"));
+            await staking.connect(u).setXMRAddress(XMR_ADDR);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             await staking.connect(u).requestXMRWithdrawal(ethers.parseEther("0.05"));
@@ -805,6 +848,7 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("9.4 Should process XMR withdrawal by admin", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
+            await staking.connect(u).setXMRAddress(XMR_ADDR);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const xmrAmount = (await staking.getUserInfo(u.address)).pendingXMR;
@@ -820,6 +864,7 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("9.5 Should reject processing by non-admin", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
+            await staking.connect(u).setXMRAddress(XMR_ADDR);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const xmrAmount = (await staking.getUserInfo(u.address)).pendingXMR;
@@ -1127,12 +1172,11 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(info.totalEarned).to.equal(ethers.parseEther("1"));
         });
 
-        it("14.6 Should handle investment just below minimum (99U)", async function () {
+        it("14.6 Should reject investment just below minimum (99U)", async function () {
             const u = signers[0];
-            await registerAndInvest(staking, u, ZERO, ethers.parseEther("99"));
-            await advanceDays(1);
-            await expect(staking.connect(u).claimStaticReward())
-                .to.be.revertedWith("Below min investment");
+            await staking.connect(u).register(ZERO);
+            await expect(staking.connect(u).invest(ethers.parseEther("99")))
+                .to.be.revertedWith("Investment below 100 USDT");
         });
 
         it("14.7 Should estimate static reward correctly", async function () {
@@ -1205,8 +1249,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect((await staking.getUserInfo(root.address)).pendingUSDT).to.be.gt(0);
 
             const pendingUSDT = (await staking.getUserInfo(root.address)).pendingUSDT;
-            await staking.connect(root).withdrawUSDT(pendingUSDT);
-            expect((await staking.getUserInfo(root.address)).pendingUSDT).to.equal(0);
+            const unit = ethers.parseEther("10");
+            const withdrawable = pendingUSDT - (pendingUSDT % unit);
+            await staking.connect(root).withdrawUSDT(withdrawable);
+            expect((await staking.getUserInfo(root.address)).pendingUSDT).to.equal(pendingUSDT % unit);
 
             await staking.setDailyRate(10000);
             for (let i = 0; i < 3; i++) {
@@ -1291,6 +1337,107 @@ describe("Comprehensive StakingDApp Tests", function () {
 
             const rootAfter = (await staking.getUserInfo(root.address)).pendingUSDT;
             expect(rootAfter).to.equal(rootBefore);
+        });
+    });
+
+    describe("16. v3 Features", function () {
+        beforeEach(freshSetup);
+
+        it("16.1 Should apply user-specific computing power", async function () {
+            const a = signers[0];
+            const b = signers[1];
+            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
+            await registerAndInvest(staking, b, ZERO, ethers.parseEther("1000"));
+
+            await staking.setUserComputingPower(a.address, 200);
+            expect(await staking.userComputingPower(a.address)).to.equal(200);
+
+            await advanceDays(1);
+            await staking.connect(a).claimStaticReward();
+            await staking.connect(b).claimStaticReward();
+
+            const infoA = await staking.getUserInfo(a.address);
+            const infoB = await staking.getUserInfo(b.address);
+            expect(infoA.totalEarned).to.equal(ethers.parseEther("20"));
+            expect(infoB.totalEarned).to.equal(ethers.parseEther("10"));
+        });
+
+        it("16.2 Should fall back to global power when user power reset to 0", async function () {
+            const a = signers[0];
+            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
+            await staking.setUserComputingPower(a.address, 0);
+            await advanceDays(1);
+            await staking.connect(a).claimStaticReward();
+            expect((await staking.getUserInfo(a.address)).totalEarned).to.equal(ethers.parseEther("10"));
+        });
+
+        it("16.3 Should reject user power above 10000", async function () {
+            await expect(staking.setUserComputingPower(signers[0].address, 10001))
+                .to.be.revertedWith("Power too high");
+        });
+
+        it("16.4 estimateStaticReward should use user-specific power", async function () {
+            const a = signers[0];
+            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
+            await staking.setUserComputingPower(a.address, 200);
+            await advanceDays(1);
+            const [usdtVal] = await staking.estimateStaticReward(a.address);
+            expect(usdtVal).to.equal(ethers.parseEther("20"));
+        });
+
+        it("16.5 Owner can adjust user USDT balance up and down", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            await staking.adjustUserUSDT(u.address, ethers.parseEther("50"));
+            expect((await staking.getUserInfo(u.address)).pendingUSDT).to.equal(ethers.parseEther("50"));
+            await staking.adjustUserUSDT(u.address, -ethers.parseEther("20"));
+            expect((await staking.getUserInfo(u.address)).pendingUSDT).to.equal(ethers.parseEther("30"));
+        });
+
+        it("16.6 USDT adjust down clamps to zero instead of underflow", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            await staking.adjustUserUSDT(u.address, ethers.parseEther("10"));
+            await staking.adjustUserUSDT(u.address, -ethers.parseEther("100"));
+            expect((await staking.getUserInfo(u.address)).pendingUSDT).to.equal(0);
+        });
+
+        it("16.7 Owner can adjust user XMR balance (mints on increase)", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            const supplyBefore = await xmrToken.totalSupply();
+            await staking.adjustUserXMR(u.address, ethers.parseEther("10"));
+            const info = await staking.getUserInfo(u.address);
+            expect(info.pendingXMR).to.equal(ethers.parseEther("10"));
+            expect((await xmrToken.totalSupply()) - supplyBefore).to.equal(ethers.parseEther("10"));
+            expect(await xmrToken.balanceOf(await staking.getAddress())).to.be.gte(ethers.parseEther("10"));
+            await staking.adjustUserXMR(u.address, -ethers.parseEther("4"));
+            expect((await staking.getUserInfo(u.address)).pendingXMR).to.equal(ethers.parseEther("6"));
+        });
+
+        it("16.8 XMR adjust down clamps to zero instead of underflow", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            await staking.adjustUserXMR(u.address, ethers.parseEther("5"));
+            await staking.adjustUserXMR(u.address, -ethers.parseEther("50"));
+            expect((await staking.getUserInfo(u.address)).pendingXMR).to.equal(0);
+        });
+
+        it("16.9 Non-owner cannot call v3 admin functions", async function () {
+            await expect(staking.connect(signers[0]).setUserComputingPower(signers[0].address, 200))
+                .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
+            await expect(staking.connect(signers[0]).adjustUserUSDT(signers[0].address, E18))
+                .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
+            await expect(staking.connect(admin).adjustUserXMR(signers[0].address, E18))
+                .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
+        });
+
+        it("16.10 getUserInfo returns xmrAddress", async function () {
+            const u = signers[0];
+            await staking.connect(u).register(ZERO);
+            await staking.connect(u).setXMRAddress(XMR_ADDR);
+            const info = await staking.getUserInfo(u.address);
+            expect(info.xmrAddress).to.equal(XMR_ADDR);
         });
     });
 });

@@ -8,6 +8,7 @@ const Staking = lazy(() => import('./components/staking/Staking.jsx'))
 const Team = lazy(() => import('./components/team/Team.jsx'))
 const Exchange = lazy(() => import('./components/exchange/Exchange.jsx'))
 const Assets = lazy(() => import('./components/assets/Assets.jsx'))
+const Records = lazy(() => import('./components/records/Records.jsx'))
 const Admin = lazy(() => import('./components/admin/Admin.jsx'))
 
 function Loading() {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/team" element={<Team />} />
           <Route path="/exchange" element={<Exchange />} />
           <Route path="/assets" element={<Assets />} />
+          <Route path="/records" element={<Records />} />
           <Route
             path="/admin"
             element={

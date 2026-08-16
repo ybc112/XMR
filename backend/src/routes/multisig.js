@@ -7,6 +7,7 @@ const router = express.Router();
 const { ethers } = require("ethers");
 const blockchain = require("../services/blockchain");
 const adminAuth = require("../middleware/adminAuth");
+const { logAction } = require("../middleware/adminLogger");
 const {
   asyncHandler,
   successResponse,
@@ -141,6 +142,13 @@ router.post(
     );
     const receipt = await tx.wait();
 
+    logAction(req, {
+      action: "multisig-submit",
+      target: to,
+      detail: `value=${value || "0"}, data=${dataBytes}`,
+      txHash: tx.hash,
+    });
+
     res.json(
       successResponse(
         {
@@ -176,6 +184,12 @@ router.post(
     const tx =
       await blockchain.multisigContractWithSigner.confirmTransaction(txId);
     const receipt = await tx.wait();
+
+    logAction(req, {
+      action: "multisig-confirm",
+      target: String(txId),
+      txHash: tx.hash,
+    });
 
     res.json(
       successResponse(
@@ -213,6 +227,12 @@ router.post(
       await blockchain.multisigContractWithSigner.revokeConfirmation(txId);
     const receipt = await tx.wait();
 
+    logAction(req, {
+      action: "multisig-revoke",
+      target: String(txId),
+      txHash: tx.hash,
+    });
+
     res.json(
       successResponse(
         {
@@ -248,6 +268,12 @@ router.post(
     const tx =
       await blockchain.multisigContractWithSigner.executeTransaction(txId);
     const receipt = await tx.wait();
+
+    logAction(req, {
+      action: "multisig-execute",
+      target: String(txId),
+      txHash: tx.hash,
+    });
 
     res.json(
       successResponse(

@@ -661,6 +661,12 @@ body { min-width: 320px; }
 .exchange-input-wrapper:focus-within {
   border-color: rgba(255, 107, 53, 0.5);
   box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  background: var(--color-bg-elevated);
+}
+
+.input-wrapper:focus-within .input-field,
+.exchange-input-wrapper:focus-within .exchange-input {
+  color: var(--color-text-main);
 }
 
 .input-field,

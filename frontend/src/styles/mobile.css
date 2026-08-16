@@ -896,8 +896,27 @@
     font-weight: 700;
   }
 
-  /* 网络节点 */
+  /* 网络节点：移动端扁平列表 + 层级徽章，取消递增缩进防溢出 */
+  .network-node {
+    padding-left: 0;
+    margin-bottom: 10px;
+  }
+
+  .network-node-children {
+    margin-left: 0;
+    padding-left: 12px;
+    margin-top: 10px;
+    border-left: 2px solid var(--m-border);
+  }
+
+  .network-node-children::before {
+    display: none;
+  }
+
   .network-node-content {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 12px 14px;
     background: var(--m-surface);
     border-color: var(--m-border);
   }
@@ -907,11 +926,54 @@
     border-color: rgba(255, 107, 53, 0.25);
   }
 
+  .network-node-main {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .network-node-line1 {
+    gap: 6px;
+  }
+
+  .network-node-depth {
+    display: inline-flex;
+    align-items: center;
+  }
+
   .network-node-address {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: #fff;
   }
 
+  .network-node-line1 .level-badge {
+    flex-shrink: 0;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .network-node-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .network-node-stats {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    width: 100%;
+  }
+
   .network-node-amount {
+    white-space: nowrap;
+    color: var(--m-orange);
+  }
+
+  .network-node-toggle {
+    background: var(--m-surface-elevated);
+    border-color: rgba(255, 107, 53, 0.2);
     color: var(--m-orange);
   }
 
@@ -1138,5 +1200,59 @@
 
   .mobile-menu-connect:disabled {
     opacity: 0.6;
+  }
+
+  /* ===== DApp 内置 WebView 闪烁修复（第 2 档）=====
+     关闭全屏动画 + 大面积模糊，改为静态渐变；
+     毛玻璃降级为纯色，合成压力骤降 */
+  .bg-glow-top,
+  .bg-glow-bottom {
+    animation: none !important;
+    filter: none !important;
+    opacity: 0.6;
+  }
+
+  .bg-particles {
+    display: none !important;
+  }
+
+  .card,
+  .navbar,
+  .modal-content,
+  .mobile-menu-item,
+  .total-value-card,
+  .mobile-quick-stat,
+  .mobile-bottom-nav,
+  .navbar-mobile,
+  .stat-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* 高频常驻动画降级：仅移动端关闭 */
+  .total-value-card::after {
+    animation: none !important;
+  }
+
+  .chat-fab {
+    animation: none !important;
+  }
+
+  .btn-primary,
+  .btn-accent {
+    animation: none !important;
+    background-position: 0% 50%;
+  }
+}
+
+/* ===== 尊重系统「减少动态效果」设置（第 3 档，无障碍）===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -7,6 +7,7 @@ const router = express.Router();
 const blockchain = require("../services/blockchain");
 const cache = require("../services/cache");
 const adminAuth = require("../middleware/adminAuth");
+const { logAction } = require("../middleware/adminLogger");
 const {
   asyncHandler,
   successResponse,
@@ -35,6 +36,12 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.setXMRPrice(priceWei)
     );
+    logAction(req, {
+      action: "set-xmr-price",
+      target: String(price),
+      detail: `XMR价格 -> ${price}`,
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "XMR价格已更新"));
   })
 );
@@ -57,6 +64,12 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.dailySettlement(priceWei)
     );
+    logAction(req, {
+      action: "daily-settlement",
+      target: String(xmrPrice),
+      detail: `结算价格 ${xmrPrice}`,
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "每日结算已完成"));
   })
 );
@@ -76,6 +89,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.setDailyRate(BigInt(rate))
     );
+    logAction(req, {
+      action: "set-daily-rate",
+      target: String(rate),
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "日化率已更新"));
   })
 );
@@ -95,6 +113,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.setComputingPower(BigInt(power))
     );
+    logAction(req, {
+      action: "set-computing-power",
+      target: String(power),
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "算力已更新"));
   })
 );
@@ -114,6 +137,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.setWithdrawFee(BigInt(fee))
     );
+    logAction(req, {
+      action: "set-withdraw-fee",
+      target: String(fee),
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "提现费率已更新"));
   })
 );
@@ -135,6 +163,12 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.setBlacklist(user, status)
     );
+    logAction(req, {
+      action: "set-blacklist",
+      target: user,
+      detail: `status=${status}`,
+      txHash: result.txHash,
+    });
     res.json(
       successResponse(result, `用户 ${user} 黑名单状态已设置为 ${status}`)
     );
@@ -150,6 +184,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.emergencyPause()
     );
+    logAction(req, {
+      action: "emergency-pause",
+      target: "contract",
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "合约已紧急暂停"));
   })
 );
@@ -163,6 +202,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.emergencyUnpause()
     );
+    logAction(req, {
+      action: "emergency-unpause",
+      target: "contract",
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, "合约已恢复"));
   })
 );
@@ -182,6 +226,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.addAdmin(admin)
     );
+    logAction(req, {
+      action: "add-admin",
+      target: admin,
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, `管理员 ${admin} 已添加`));
   })
 );
@@ -201,6 +250,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.removeAdmin(admin)
     );
+    logAction(req, {
+      action: "remove-admin",
+      target: admin,
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, `管理员 ${admin} 已移除`));
   })
 );
@@ -220,6 +274,11 @@ router.post(
     const result = await blockchain.sendAdminTransaction(() =>
       blockchain.stakingContractWithSigner.processXMRWithdrawal(user)
     );
+    logAction(req, {
+      action: "process-xmr-withdrawal",
+      target: user,
+      txHash: result.txHash,
+    });
     res.json(successResponse(result, `用户 ${user} 的XMR提现已处理`));
   })
 );
@@ -232,8 +291,26 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, limit } = parsePagination(req.query);
     const result = cache.getPendingXMRWithdrawals(page, limit);
+
+    // 附带每个用户链上最新的 XMR 收款地址（供人工打款）
+    const items = await Promise.all(
+      result.items.map(async (e) => {
+        const user = e.args?.user;
+        let xmrAddr = e.args?.xmrAddr || "";
+        if (user) {
+          try {
+            const latest = await blockchain.stakingContract.xmrAddress(user);
+            if (latest) xmrAddr = latest;
+          } catch {
+            /* 读取失败时退回事件里的地址 */
+          }
+        }
+        return { ...e, xmrAddress: xmrAddr };
+      })
+    );
+
     res.json(
-      successResponse(buildPagination(result.items, result.total, page, limit))
+      successResponse(buildPagination(items, result.total, page, limit))
     );
   })
 );

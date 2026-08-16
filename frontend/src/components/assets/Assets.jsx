@@ -9,7 +9,9 @@ import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatNumber, formatAddress, formatEther, safeParseFloat } from '../../utils/format.js'
+import { formatNumber, formatAddress, formatEther, safeParseFloat, parseContractError } from '../../utils/format.js'
+
+const XMR_ADDRESS_REGEX = /^[48][0-9A-Za-z]{94,105}$/
 
 export default function Assets() {
   const navigate = useNavigate()
@@ -18,7 +20,8 @@ export default function Assets() {
     getUserInfo,
     getContractStats,
     withdrawUSDT,
-    requestXMRWithdrawal
+    requestXMRWithdrawal,
+    setXMRAddress
   } = useStaking()
   const { showSuccess, showError } = useToast()
 
@@ -33,6 +36,10 @@ export default function Assets() {
   const [xmrModalOpen, setXmrModalOpen] = useState(false)
   const [xmrAmount, setXmrAmount] = useState('')
   const [withdrawingXmr, setWithdrawingXmr] = useState(false)
+
+  const [xmrAddrInput, setXmrAddrInput] = useState('')
+  const [editingXmrAddr, setEditingXmrAddr] = useState(false)
+  const [savingXmrAddr, setSavingXmrAddr] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!account) return
@@ -63,6 +70,11 @@ export default function Assets() {
       showError('请输入提现金额')
       return
     }
+    const amount = parseFloat(usdtAmount)
+    if (amount % 10 !== 0) {
+      showError('提现金额必须是 10 的整数倍')
+      return
+    }
     setWithdrawingUsdt(true)
     try {
       await withdrawUSDT(usdtAmount)
@@ -72,13 +84,17 @@ export default function Assets() {
       await loadData()
     } catch (err) {
       console.error('USDT提现失败:', err)
-      showError(err.reason || err.message || 'USDT提现失败')
+      showError(parseContractError(err, 'USDT提现失败'))
     } finally {
       setWithdrawingUsdt(false)
     }
   }
 
   const handleRequestXMRWithdrawal = async () => {
+    if (!xmrAddr) {
+      showError('请先添加 XMR 收款地址')
+      return
+    }
     if (!xmrAmount || parseFloat(xmrAmount) <= 0) {
       showError('请输入提现数量')
       return
@@ -92,16 +108,45 @@ export default function Assets() {
       await loadData()
     } catch (err) {
       console.error('XMR提现请求失败:', err)
-      showError(err.reason || err.message || 'XMR提现请求失败')
+      showError(parseContractError(err, 'XMR提现请求失败'))
     } finally {
       setWithdrawingXmr(false)
     }
   }
 
-  const setMaxUSDT = () => {
-    if (userInfo) {
-      setUsdtAmount(formatNumber(userInfo.pendingUSDT, 4).replace(/,/g, ''))
+  const handleSetXMRAddress = async () => {
+    const addr = xmrAddrInput.trim()
+    if (!XMR_ADDRESS_REGEX.test(addr)) {
+      showError('XMR 收款地址格式不正确（标准地址以 4 或 8 开头，95~106 位）')
+      return
     }
+    setSavingXmrAddr(true)
+    try {
+      await setXMRAddress(addr)
+      showSuccess('XMR 收款地址已保存')
+      setEditingXmrAddr(false)
+      setXmrAddrInput('')
+      await loadData()
+    } catch (err) {
+      console.error('保存 XMR 地址失败:', err)
+      showError(parseContractError(err, '保存 XMR 地址失败'))
+    } finally {
+      setSavingXmrAddr(false)
+    }
+  }
+
+  const setQuickUSDT = (amount) => {
+    const pending = userInfo ? safeParseFloat(formatEther(userInfo.pendingUSDT)) : 0
+    if (amount === 'max') {
+      setUsdtAmount(String(Math.floor(pending / 10) * 10))
+      return
+    }
+    if (pending >= amount) setUsdtAmount(String(amount))
+    else showError('可提现余额不足')
+  }
+
+  const setMaxUSDT = () => {
+    setQuickUSDT('max')
   }
 
   const setMaxXMR = () => {
@@ -149,6 +194,7 @@ export default function Assets() {
   const totalValue = calculateTotalValue().toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
   const xmrPrice = stats ? formatEther(stats.xmrPrice) : '0.0000'
   const hasPendingXMR = userInfo && userInfo.xmrWithdrawalPending > 0n
+  const xmrAddr = userInfo?.xmrAddress || ''
 
   const usdtIcon = (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -251,14 +297,57 @@ export default function Assets() {
             <span>可操作余额</span>
             <Badge variant="gold">隐私币</Badge>
           </div>
+
+          <div className="xmr-address-block">
+            <div className="xmr-address-header">
+              <span className="xmr-address-label">XMR 收款地址</span>
+              {xmrAddr && !editingXmrAddr && (
+                <button
+                  type="button"
+                  className="xmr-address-edit-btn"
+                  onClick={() => { setEditingXmrAddr(true); setXmrAddrInput(xmrAddr) }}
+                >
+                  修改
+                </button>
+              )}
+            </div>
+            {xmrAddr && !editingXmrAddr ? (
+              <div className="xmr-address-value" title={xmrAddr}>
+                {xmrAddr.slice(0, 12)}...{xmrAddr.slice(-10)}
+              </div>
+            ) : (
+              <div className="xmr-address-form">
+                <input
+                  type="text"
+                  className="xmr-address-input"
+                  value={xmrAddrInput}
+                  onChange={(e) => setXmrAddrInput(e.target.value)}
+                  placeholder="输入门罗链收款地址（以 4 或 8 开头）"
+                  spellCheck={false}
+                />
+                <Button
+                  variant="accent"
+                  size="small"
+                  onClick={handleSetXMRAddress}
+                  loading={savingXmrAddr}
+                >
+                  保存地址
+                </Button>
+              </div>
+            )}
+            {!xmrAddr && (
+              <p className="xmr-address-tip">提现 XMR 前必须先绑定门罗链收款地址</p>
+            )}
+          </div>
+
           <div className="asset-actions">
             <Button
               variant="outline"
               fullWidth
               onClick={() => setXmrModalOpen(true)}
-              disabled={userInfo && userInfo.pendingXMR === 0n}
+              disabled={userInfo && (userInfo.pendingXMR === 0n || !xmrAddr)}
             >
-              提现 XMR
+              {xmrAddr ? '提现 XMR' : '请先添加 XMR 收款地址'}
             </Button>
             <Button
               variant="accent"
@@ -320,7 +409,15 @@ export default function Assets() {
         </Card>
       </div>
 
-      <Card title="资产明细" className="mt-4">
+      <Card
+        title="资产明细"
+        className="mt-4"
+        action={
+          <Button variant="outline" size="small" onClick={() => navigate('/records')}>
+            资金明细 →
+          </Button>
+        }
+      >
         <div className="info-list">
           <div className="info-row">
             <span className="info-label">钱包地址</span>
@@ -370,8 +467,18 @@ export default function Assets() {
             placeholder="输入提现金额"
             type="number"
             suffix="USDT"
-            hint={`可提现余额: ${pendingUSDT} USDT`}
+            hint={`可提现余额: ${pendingUSDT} USDT · 提现金额必须是 10 的整数倍`}
           />
+          <div className="quick-amounts">
+            {[10, 50, 100].map((amount) => (
+              <button key={amount} type="button" className="quick-amount-btn" onClick={() => setQuickUSDT(amount)}>
+                {amount}
+              </button>
+            ))}
+            <button type="button" className="quick-amount-btn" onClick={() => setQuickUSDT('max')}>
+              最大
+            </button>
+          </div>
           <button className="max-btn" onClick={setMaxUSDT}>全部提现</button>
           <div className="modal-tip">
             <p>提现将直接转入您的钱包地址</p>
@@ -394,6 +501,15 @@ export default function Assets() {
         }
       >
         <div className="modal-form">
+          {xmrAddr ? (
+            <div className="xmr-modal-address">
+              收款地址：{xmrAddr.slice(0, 16)}...{xmrAddr.slice(-8)}
+            </div>
+          ) : (
+            <div className="xmr-modal-address xmr-modal-address-warn">
+              尚未绑定 XMR 收款地址，请先在上方资产卡片中添加
+            </div>
+          )}
           <Input
             label="提现数量"
             value={xmrAmount}

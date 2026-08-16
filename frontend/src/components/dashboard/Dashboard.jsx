@@ -11,7 +11,7 @@ import AnimatedNumber from '../common/AnimatedNumber.jsx'
 import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
 
 export default function Dashboard() {
-  const { account, isConnected, connectWallet } = useWeb3()
+  const { account, isConnected, connectWallet, isAdmin } = useWeb3()
   const {
     getUserInfo,
     getContractStats,
@@ -524,12 +524,13 @@ export default function Dashboard() {
               )}
             </Card>
 
-            <Card title="合约状态" icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" />
-                <path d="M12 16V12M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            }>
+            {isAdmin && (
+              <Card title="合约状态" icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 16V12M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              }>
               <div className="info-list">
                 <div className="info-row">
                   <span className="info-label">合约状态</span>
@@ -559,6 +560,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </Card>
+            )}
           </div>
         </>
       )}

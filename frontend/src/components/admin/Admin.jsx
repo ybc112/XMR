@@ -40,7 +40,8 @@ export default function Admin() {
     getTransactionCount,
     getOwners,
     isOwner,
-    required
+    required,
+    isConfirmedBy
   } = useMultiSig()
   const { showSuccess, showError, showInfo } = useToast()
 
@@ -62,6 +63,7 @@ export default function Admin() {
   const [requiredConfirm, setRequiredConfirm] = useState(0)
   const [txCount, setTxCount] = useState(0)
   const [multisigTxList, setMultisigTxList] = useState([])
+  const [confirmedByMe, setConfirmedByMe] = useState([])
   const [owners, setOwners] = useState([])
   const [isCurrentOwner, setIsCurrentOwner] = useState(false)
 
@@ -86,7 +88,7 @@ export default function Admin() {
       setIsCurrentOwner(ownerStatus)
 
       const txs = []
-      const maxLoad = Math.min(count, 10)
+      const maxLoad = Math.min(count, 20)
       for (let i = 0; i < maxLoad; i++) {
         const tx = await getTransaction(i)
         if (tx) {
@@ -94,10 +96,19 @@ export default function Admin() {
         }
       }
       setMultisigTxList(txs)
+
+      if (account && txs.length > 0) {
+        const flags = await Promise.all(
+          txs.map((tx) => isConfirmedBy(tx.id, account))
+        )
+        setConfirmedByMe(flags)
+      } else {
+        setConfirmedByMe([])
+      }
     } catch (err) {
       console.error('加载多签数据失败:', err)
     }
-  }, [required, getTransactionCount, getOwners, isOwner, account, getTransaction])
+  }, [required, getTransactionCount, getOwners, isOwner, account, getTransaction, isConfirmedBy])
 
   const loadData = useCallback(async () => {
     try {
@@ -160,7 +171,35 @@ export default function Admin() {
   const handleSubmitMultisig = () => {
     const value = ethers.parseEther(multisigValue || '0')
     const data = multisigData.trim() || '0x'
+
+    const dup = multisigTxList.find(
+      (tx) => !tx.executed &&
+        tx.destination.toLowerCase() === multisigDestination.trim().toLowerCase() &&
+        (tx.data || '').toLowerCase() === data.toLowerCase()
+    )
+    if (dup) {
+      showError(`已存在相同的待执行交易 #${dup.id}，如确需重复提交请先执行或确认该交易`)
+      return
+    }
+
     handleAction('提交多签交易', submitTransaction, multisigDestination, value, data)
+  }
+
+  const decodeTxData = (tx) => {
+    if (!tx.data || tx.data === '0x') {
+      return tx.value > 0n ? `转账 ${formatNumber(tx.value)} BNB` : '纯转账'
+    }
+    try {
+      const iface = new ethers.Interface(STAKING_DAPP_ABI)
+      const decoded = iface.parseTransaction({ data: tx.data })
+      const args = decoded.args.map((arg) => {
+        const s = String(arg)
+        return s.startsWith('0x') && s.length > 12 ? `${s.slice(0, 8)}...${s.slice(-4)}` : s
+      })
+      return `${decoded.fragment.name}(${args.join(', ')})`
+    } catch {
+      return `未知调用 ${tx.data.slice(0, 14)}...`
+    }
   }
 
   const handleGenerateCalldata = () => {
@@ -613,62 +652,75 @@ export default function Admin() {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>操作内容</th>
                   <th>目标地址</th>
                   <th>值</th>
                   <th>状态</th>
                   <th>确认数</th>
+                  <th>我已签名</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {multisigTxList.map((tx) => (
-                  <tr key={tx.id}>
-                    <td className="text-mono">#{tx.id}</td>
-                    <td className="text-mono">{formatAddress(tx.destination)}</td>
-                    <td>{formatNumber(tx.value)}</td>
-                    <td>
-                      {tx.executed ? (
-                        <span className="status-tag status-tag-success">已执行</span>
-                      ) : (
-                        <span className="status-tag status-tag-warning">待执行</span>
-                      )}
-                    </td>
-                    <td>{tx.confirmCount} / {requiredConfirm}</td>
-                    <td>
-                      {tx.executed ? (
-                        <span className="text-muted">-</span>
-                      ) : (
-                        <div className="admin-actions-row">
-                          <Button
-                            variant="primary"
-                            size="small"
-                            onClick={() => handleAction('确认交易', confirmTransaction, tx.id)}
-                            loading={actionLoading}
-                          >
-                            确认
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="small"
-                            onClick={() => handleAction('撤销确认', revokeConfirmation, tx.id)}
-                            loading={actionLoading}
-                          >
-                            撤销
-                          </Button>
-                          <Button
-                            variant="success"
-                            size="small"
-                            onClick={() => handleAction('执行交易', executeTransaction, tx.id)}
-                            loading={actionLoading}
-                            disabled={tx.confirmCount < requiredConfirm}
-                          >
-                            执行
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {multisigTxList.map((tx, idx) => {
+                  const myConfirmed = confirmedByMe[idx] === true
+                  const canExecute = !tx.executed && tx.confirmCount >= requiredConfirm
+                  return (
+                    <tr key={tx.id} className={canExecute ? 'row-highlight' : ''}>
+                      <td className="text-mono">#{tx.id}</td>
+                      <td className="text-mono multisig-decoded">{decodeTxData(tx)}</td>
+                      <td className="text-mono">{formatAddress(tx.destination)}</td>
+                      <td>{formatNumber(tx.value)}</td>
+                      <td>
+                        {tx.executed ? (
+                          <span className="status-tag status-tag-success">已执行</span>
+                        ) : canExecute ? (
+                          <span className="status-tag status-tag-info">可执行</span>
+                        ) : (
+                          <span className="status-tag status-tag-warning">待执行</span>
+                        )}
+                      </td>
+                      <td>{tx.confirmCount} / {requiredConfirm}</td>
+                      <td>{myConfirmed ? '✅' : '❌'}</td>
+                      <td>
+                        {tx.executed ? (
+                          <span className="text-muted">-</span>
+                        ) : (
+                          <div className="admin-actions-row">
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() => handleAction('确认交易', confirmTransaction, tx.id)}
+                              loading={actionLoading}
+                              disabled={myConfirmed}
+                              title={myConfirmed ? '您已签名' : ''}
+                            >
+                              {myConfirmed ? '已签' : '确认'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleAction('撤销确认', revokeConfirmation, tx.id)}
+                              loading={actionLoading}
+                              disabled={!myConfirmed}
+                            >
+                              撤销
+                            </Button>
+                            <Button
+                              variant="success"
+                              size="small"
+                              onClick={() => handleAction('执行交易', executeTransaction, tx.id)}
+                              loading={actionLoading}
+                              disabled={!canExecute || !myConfirmed}
+                            >
+                              执行
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

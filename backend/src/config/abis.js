@@ -48,6 +48,13 @@ const STAKING_DAPP_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [{ name: "_addr", type: "string" }],
+    name: "setXMRAddress",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 
   // -------- 查询函数 --------
   {
@@ -70,11 +77,26 @@ const STAKING_DAPP_ABI = [
           { name: "maxAreaVolume", type: "uint256" },
           { name: "memberId", type: "uint256" },
           { name: "xmrWithdrawalPending", type: "uint256" },
+          { name: "xmrAddress", type: "string" },
         ],
         name: "userInfo",
         type: "tuple",
       },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "", type: "address" }],
+    name: "xmrAddress",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "", type: "address" }],
+    name: "userComputingPower",
+    outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
@@ -150,6 +172,13 @@ const STAKING_DAPP_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 
   // -------- 管理函数 --------
   {
@@ -183,6 +212,36 @@ const STAKING_DAPP_ABI = [
   {
     inputs: [{ name: "_power", type: "uint256" }],
     name: "setComputingPower",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_user", type: "address" },
+      { name: "_power", type: "uint256" },
+    ],
+    name: "setUserComputingPower",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_user", type: "address" },
+      { name: "_delta", type: "int256" },
+    ],
+    name: "adjustUserUSDT",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_user", type: "address" },
+      { name: "_delta", type: "int256" },
+    ],
+    name: "adjustUserXMR",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -311,6 +370,7 @@ const STAKING_DAPP_ABI = [
       { indexed: true, name: "user", type: "address" },
       { indexed: false, name: "amount", type: "uint256" },
       { indexed: false, name: "fee", type: "uint256" },
+      { indexed: false, name: "xmrAddr", type: "string" },
     ],
     name: "XMRWithdrawalRequested",
     type: "event",
@@ -322,6 +382,35 @@ const STAKING_DAPP_ABI = [
       { indexed: false, name: "amount", type: "uint256" },
     ],
     name: "XMRWithdrawalProcessed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "xmrAddr", type: "string" },
+    ],
+    name: "XMRAddressSet",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "power", type: "uint256" },
+    ],
+    name: "UserComputingPowerSet",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "kind", type: "string" },
+      { indexed: false, name: "delta", type: "int256" },
+      { indexed: false, name: "operator", type: "address" },
+    ],
+    name: "BalanceAdjusted",
     type: "event",
   },
   {

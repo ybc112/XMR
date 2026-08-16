@@ -6,6 +6,7 @@ const { ethers } = require("ethers");
 const config = require("../config/env");
 const logger = require("../utils/logger");
 const cache = require("./cache");
+const db = require("./db");
 const {
   stakingContract,
   provider,
@@ -32,6 +33,9 @@ const EVENT_CATEGORY_MAP = {
   ComputingPowerUpdated: "investments",
   XMRPriceUpdated: "investments",
   LevelUpdated: "investments",
+  XMRAddressSet: "withdrawals",
+  UserComputingPowerSet: "investments",
+  BalanceAdjusted: "investments",
 };
 
 // 要扫描的所有事件名
@@ -111,6 +115,16 @@ async function scanBlockRange(fromBlock, toBlock) {
         }
         // 添加到 all
         cache.addToAll(formatted);
+
+        // 持久化到 SQLite（INSERT OR IGNORE 去重）
+        try {
+          db.insertEvent(formatted);
+        } catch (err) {
+          logger.debug(
+            `事件落库失败 (${formatted.txHash}#${formatted.logIndex}):`,
+            err.message
+          );
+        }
       }
     } catch (err) {
       // 某个事件查询失败不影响其他事件
@@ -122,6 +136,53 @@ async function scanBlockRange(fromBlock, toBlock) {
   }
 
   return totalEvents;
+}
+
+/**
+ * 为本批事件涉及的区块补齐时间戳
+ * 已有 block_timestamps 的直接复用，缺失的用 provider.getBlock 拉取（并发 ≤5，失败跳过）
+ */
+async function backfillBlockTimestamps(events) {
+  if (!events || events.length === 0) return;
+
+  const blocks = [...new Set(events.map((e) => e.blockNumber))];
+  const timestampMap = new Map();
+  const missing = [];
+
+  // 先查本地缓存表
+  for (const blockNumber of blocks) {
+    const ts = db.getBlockTimestamp(blockNumber);
+    if (ts != null) {
+      timestampMap.set(blockNumber, ts);
+    } else {
+      missing.push(blockNumber);
+    }
+  }
+
+  // 缺失的并发拉取（每批 ≤5）
+  const CONCURRENCY = 5;
+  for (let i = 0; i < missing.length; i += CONCURRENCY) {
+    const chunk = missing.slice(i, i + CONCURRENCY);
+    const fetched = await Promise.all(
+      chunk.map(async (blockNumber) => {
+        try {
+          const block = await provider.getBlock(blockNumber);
+          return block ? [blockNumber, Number(block.timestamp)] : null;
+        } catch {
+          return null; // 拉取失败跳过该区块
+        }
+      })
+    );
+    for (const item of fetched) {
+      if (item) timestampMap.set(item[0], item[1]);
+    }
+  }
+
+  if (timestampMap.size === 0) return;
+
+  // 写入时间戳表并回填 events
+  db.saveBlockTimestamps(timestampMap);
+  db.updateEventTimestamps(timestampMap);
 }
 
 /**
@@ -137,16 +198,26 @@ async function performScan() {
 
   try {
     const latestBlock = await provider.getBlockNumber();
-    let fromBlock = cache.getLastScannedBlock();
 
-    // 首次扫描从配置的起始区块开始
-    if (fromBlock === 0 && !initialized) {
+    // 扫描起点优先级：内存缓存 > 数据库 scan_state > 配置起始区块
+    let lastScanned = cache.getLastScannedBlock();
+    if (!lastScanned) {
+      const dbLast = parseInt(db.getScanState("lastScannedBlock") || "0", 10);
+      if (dbLast > 0) {
+        lastScanned = dbLast;
+        cache.setLastScannedBlock(dbLast);
+        logger.info(`从数据库恢复扫描进度: 区块 ${dbLast}`);
+      }
+    }
+
+    let fromBlock;
+    if (lastScanned > 0) {
+      fromBlock = lastScanned + 1; // 从上次扫描的下一个区块开始
+    } else {
       fromBlock = config.startBlock;
       logger.info(
         `首次扫描，从区块 ${fromBlock} 开始`
       );
-    } else {
-      fromBlock = fromBlock + 1; // 从上次扫描的下一个区块开始
     }
 
     if (fromBlock > latestBlock) {
@@ -171,14 +242,19 @@ async function performScan() {
       const events = await scanBlockRange(currentBlock, batchEnd);
       totalFound += events.length;
 
+      // 为本批事件涉及的区块补齐时间戳
+      await backfillBlockTimestamps(events);
+
       currentBlock = batchEnd + 1;
 
-      // 更新已扫描区块
+      // 更新已扫描区块（内存 + 数据库）
       cache.setLastScannedBlock(batchEnd);
+      db.setScanState("lastScannedBlock", String(batchEnd));
     }
 
     initialized = true;
     cache.setLastScannedBlock(latestBlock);
+    db.setScanState("lastScannedBlock", String(latestBlock));
 
     const stats = cache.getStats();
     logger.info(
@@ -193,6 +269,31 @@ async function performScan() {
 }
 
 /**
+ * 启动时从数据库回填内存缓存（cache.addEvent/addToAll 已去重）
+ * 避免重启后内存数据丢失
+ */
+function loadCacheFromDb(limitPerType = 5000) {
+  let loaded = 0;
+  for (const eventName of EVENTS_TO_SCAN) {
+    try {
+      const { items } = db.getEventsByType(eventName, { page: 1, limit: limitPerType });
+      const category = EVENT_CATEGORY_MAP[eventName];
+      for (const evt of items) {
+        if (category) {
+          cache.addEvent(category, evt);
+        }
+        cache.addToAll(evt);
+        loaded++;
+      }
+    } catch (err) {
+      logger.warn(`从数据库回填事件 ${eventName} 失败: ${err.message}`);
+    }
+  }
+  logger.info(`已从数据库回填 ${loaded} 个事件到内存缓存`);
+  return loaded;
+}
+
+/**
  * 启动事件扫描服务
  */
 function start() {
@@ -200,6 +301,13 @@ function start() {
   logger.info(
     `配置: 起始区块=${config.startBlock}, 间隔=${config.scanInterval}ms, 批次大小=${config.scanBatchSize}`
   );
+
+  // 先从数据库回填内存缓存，再执行扫描
+  try {
+    loadCacheFromDb();
+  } catch (err) {
+    logger.warn("从数据库回填内存缓存失败:", err.message);
+  }
 
   // 立即执行一次初始扫描
   performScan().then(() => {
@@ -249,6 +357,7 @@ module.exports = {
   stop,
   triggerScan,
   getStatus,
+  loadCacheFromDb,
   EVENTS_TO_SCAN,
   EVENT_CATEGORY_MAP,
 };

@@ -43,8 +43,8 @@ client.interceptors.response.use(
   (err) => {
     if (err.response && err.response.status === 401) {
       clearAuth();
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.replace('/login');
+      if (!window.location.pathname.startsWith('/admin/login')) {
+        window.location.replace('/admin/login');
       }
     }
     const msg =

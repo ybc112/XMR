@@ -627,43 +627,6 @@ router.get(
 // ======================== 用户操作 ========================
 
 /**
- * POST /api/admin/users/:address/computing-power - 设置用户算力（onlyOwner）
- * body: { power: number }（0~10000 整数）
- */
-router.post(
-  "/users/:address/computing-power",
-  asyncHandler(async (req, res) => {
-    const addr = resolveAddress(req, res);
-    if (!addr) return;
-
-    const power = Number(req.body ? req.body.power : undefined);
-    if (!Number.isInteger(power) || power < 0 || power > 10000) {
-      return res
-        .status(400)
-        .json(errorResponse("power 必须为 0~10000 的整数"));
-    }
-
-    const result = await execOwnerOp(
-      "setUserComputingPower",
-      addr,
-      BigInt(power)
-    );
-    logAction(req, {
-      action: "set-user-computing-power",
-      target: addr,
-      detail: `power=${power}`,
-      txHash: result.txHash,
-    });
-
-    const message =
-      result.mode === "multisig"
-        ? `已提交多签交易 #${result.txId}：setUserComputingPower，待 ${result.remaining}/${result.required} 确认后执行`
-        : `已直接设置用户 ${addr} 算力为 ${power}`;
-    res.json(successResponse(result, message));
-  })
-);
-
-/**
  * POST /api/admin/users/:address/adjust-balance - 调整用户余额（onlyOwner）
  * body: { kind: "USDT"|"XMR", delta: number }（可正可负、非零，18 位小数）
  */

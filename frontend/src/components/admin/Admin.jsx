@@ -20,8 +20,6 @@ export default function Admin() {
     getContractStats,
     setXMRPrice,
     dailySettlement,
-    setDailyRate,
-    setComputingPower,
     setWithdrawFee,
     setBlacklist,
     emergencyPause,
@@ -29,7 +27,6 @@ export default function Admin() {
     addAdmin,
     removeAdmin,
     processXMRWithdrawal,
-    setUserComputingPower,
     adjustUserUSDT,
     adjustUserXMR
   } = useStaking()
@@ -53,8 +50,6 @@ export default function Admin() {
   const [actionLoading, setActionLoading] = useState(false)
 
   const [xmrPrice, setXmrPrice] = useState('')
-  const [dailyRateInput, setDailyRateInput] = useState('')
-  const [computingPowerInput, setComputingPowerInput] = useState('')
   const [withdrawFeeInput, setWithdrawFeeInput] = useState('')
   const [blacklistAddr, setBlacklistAddr] = useState('')
   const [blacklistStatus, setBlacklistStatus] = useState(true)
@@ -79,7 +74,6 @@ export default function Admin() {
   // 用户管理
   const [manageAddr, setManageAddr] = useState('')
   const [managedUser, setManagedUser] = useState(null)
-  const [userPowerInput, setUserPowerInput] = useState('')
   const [usdtDeltaInput, setUsdtDeltaInput] = useState('')
   const [xmrDeltaInput, setXmrDeltaInput] = useState('')
 
@@ -196,7 +190,6 @@ export default function Admin() {
         return
       }
       setManagedUser(info)
-      setUserPowerInput(info.userComputingPower ? String(Number(info.userComputingPower)) : '0')
       setUsdtDeltaInput('')
       setXmrDeltaInput('')
     } catch (err) {
@@ -204,15 +197,6 @@ export default function Admin() {
     } finally {
       setActionLoading(false)
     }
-  }
-
-  const adjustPower = () => {
-    const power = Number(userPowerInput)
-    if (!Number.isInteger(power) || power < 0 || power > 10000) {
-      showError('算力值必须为 0~10000 的整数')
-      return
-    }
-    handleAction('调整用户算力', setUserComputingPower, manageAddr, power)
   }
 
   const adjustUSDT = () => {
@@ -484,13 +468,13 @@ export default function Admin() {
                 label="函数名"
                 value={multisigFuncName}
                 onChange={(e) => setMultisigFuncName(e.target.value)}
-                placeholder="setDailyRate"
+                placeholder="setWithdrawFee"
               />
               <Input
                 label="参数 (逗号分隔)"
                 value={multisigFuncParams}
                 onChange={(e) => setMultisigFuncParams(e.target.value)}
-                placeholder="0.01"
+                placeholder="500"
               />
               <Button
                 variant="outline"
@@ -547,46 +531,6 @@ export default function Admin() {
               loading={actionLoading}
             >
               执行结算
-            </Button>
-          </div>
-        </Card>
-
-        <Card title="设置日化率">
-          <div className="admin-form">
-            <Input
-              label="日化率"
-              value={dailyRateInput}
-              onChange={(e) => setDailyRateInput(e.target.value)}
-              placeholder="例如: 0.01"
-              type="number"
-            />
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={() => handleAction('设置日化率', setDailyRate, dailyRateInput)}
-              loading={actionLoading}
-            >
-              设置日化率
-            </Button>
-          </div>
-        </Card>
-
-        <Card title="设置算力">
-          <div className="admin-form">
-            <Input
-              label="算力参数"
-              value={computingPowerInput}
-              onChange={(e) => setComputingPowerInput(e.target.value)}
-              placeholder="输入算力值"
-              type="number"
-            />
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={() => handleAction('设置算力', setComputingPower, computingPowerInput)}
-              loading={actionLoading}
-            >
-              设置算力
             </Button>
           </div>
         </Card>
@@ -759,23 +703,6 @@ export default function Admin() {
               </div>
 
               <div className="managed-user-actions">
-                <div className="managed-user-action-row">
-                  <Input
-                    label="算力值"
-                    type="number"
-                    value={userPowerInput}
-                    onChange={(e) => setUserPowerInput(e.target.value)}
-                    placeholder="0-10000（0=全局）"
-                  />
-                  <Button
-                    variant="primary"
-                    onClick={adjustPower}
-                    loading={actionLoading}
-                  >
-                    调整算力
-                  </Button>
-                </div>
-
                 <div className="managed-user-action-row">
                   <Input
                     label="USDT 调整"

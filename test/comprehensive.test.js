@@ -195,45 +195,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(info.totalEarned).to.equal(ethers.parseEther("300"));
         });
 
-        it("3.5 Should reflect daily rate change", async function () {
+        it("3.5 Daily rate is locked to 100 (1%) and cannot be changed", async function () {
+            expect(await staking.DAILY_RATE()).to.equal(100);
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
-            await staking.setDailyRate(200);
-            await advanceDays(1);
-            await staking.connect(u).claimStaticReward();
-            const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("20"));
-        });
-
-        it("3.6 Should reflect computing power change", async function () {
-            const u = signers[0];
-            await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
-            await staking.setComputingPower(200);
-            await advanceDays(1);
-            await staking.connect(u).claimStaticReward();
-            const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("20"));
-        });
-
-        it("3.7 Should produce zero reward when daily rate is 0", async function () {
-            const u = signers[0];
-            await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
-            await staking.setDailyRate(0);
-            await advanceDays(1);
-            await staking.connect(u).claimStaticReward();
-            const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(0);
-            expect(info.pendingXMR).to.equal(0);
-        });
-
-        it("3.8 Should not update lastClaimDay when rate=0 preventing accumulation", async function () {
-            const u = signers[0];
-            await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
-            await staking.setDailyRate(0);
-            await advanceDays(3);
-            await staking.connect(u).claimStaticReward();
-            expect((await staking.getUserInfo(u.address)).totalEarned).to.equal(0);
-            await staking.setDailyRate(100);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
@@ -255,9 +220,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("3.11 Should reject claim from exited user", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             await expect(staking.connect(u).claimStaticReward())
@@ -355,9 +319,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, MIN100);
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }
             expect((await staking.getUserInfo(root.address)).exited).to.be.true;
@@ -543,9 +506,8 @@ describe("Comprehensive StakingDApp Tests", function () {
                 await registerAndInvest(staking, signers[i], root.address, ethers.parseEther("2000"));
             }
             expect((await staking.getUserInfo(root.address)).level).to.be.gte(1);
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }
             expect((await staking.getUserInfo(root.address)).exited).to.be.true;
@@ -562,9 +524,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.1 Should exit via static income when reaching 3x", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             expect((await staking.getUserInfo(u.address)).exited).to.be.true;
@@ -586,12 +547,13 @@ describe("Comprehensive StakingDApp Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(10000);
-            await advanceDays(2);
-            await staking.connect(root).claimStaticReward();
+            for (let i = 0; i < 6; i++) {
+                await advanceDays(30);
+                await staking.connect(root).claimStaticReward();
+            }
             const afterClaim = await staking.getUserInfo(root.address);
             const remaining = afterClaim.exitLimit - afterClaim.totalEarned;
-            expect(remaining).to.equal(ethers.parseEther("100"));
+            expect(remaining).to.equal(ethers.parseEther("120"));
             await registerAndInvest(staking, child, root.address, ethers.parseEther("10000"));
             const final = await staking.getUserInfo(root.address);
             expect(final.totalEarned).to.equal(ethers.parseEther("300"));
@@ -601,9 +563,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.4 Should allow reinvestment after exit resetting totalEarned", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             expect((await staking.getUserInfo(u.address)).exited).to.be.true;
@@ -617,9 +578,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.4b Should not claim immediately after reinvestment (lastClaimDay reset)", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             expect((await staking.getUserInfo(u.address)).exited).to.be.true;
@@ -909,62 +869,49 @@ describe("Comprehensive StakingDApp Tests", function () {
     describe("10. Admin Functions", function () {
         beforeEach(freshSetup);
 
-        it("10.1 Owner can set daily rate (0-100%)", async function () {
-            await staking.setDailyRate(0);
-            expect(await staking.dailyRate()).to.equal(0);
-            await staking.setDailyRate(5000);
-            expect(await staking.dailyRate()).to.equal(5000);
-            await staking.setDailyRate(10000);
-            expect(await staking.dailyRate()).to.equal(10000);
+        it("10.1 Daily rate is locked to 100 (1%)", async function () {
+            expect(await staking.DAILY_RATE()).to.equal(100);
         });
 
-        it("10.2 Should reject daily rate above 100%", async function () {
-            await expect(staking.setDailyRate(10001))
-                .to.be.revertedWith("Rate exceeds 100%");
+        it("10.2 Computing power is locked to 100", async function () {
+            const stats = await staking.getContractStats();
+            expect(stats.computingPower).to.equal(100);
         });
 
-        it("10.3 Owner can set computing power", async function () {
-            await staking.setComputingPower(100);
-            expect(await staking.computingPower()).to.equal(100);
-            await staking.setComputingPower(200);
-            expect(await staking.computingPower()).to.equal(200);
-        });
-
-        it("10.4 Admin can set XMR price", async function () {
+        it("10.3 Admin can set XMR price", async function () {
             await staking.connect(admin).setXMRPrice(ethers.parseEther("250"));
             expect(await staking.xmrPrice()).to.equal(ethers.parseEther("250"));
         });
 
-        it("10.5 Admin can perform daily settlement", async function () {
+        it("10.4 Admin can perform daily settlement", async function () {
+            await advanceDays(1);
             await staking.connect(admin).dailySettlement(ethers.parseEther("150"));
             expect(await staking.xmrPrice()).to.equal(ethers.parseEther("150"));
-            expect(await staking.lastSettlementDay()).to.be.gt(0);
+            expect(await staking.lastSettlementPeriod()).to.be.gt(0);
         });
 
-        it("10.6 Owner can add and remove admins", async function () {
+        it("10.5 Owner can add and remove admins", async function () {
             await staking.addAdmin(signers[0].address);
             expect(await staking.admins(signers[0].address)).to.be.true;
             await staking.removeAdmin(signers[0].address);
             expect(await staking.admins(signers[0].address)).to.be.false;
         });
 
-        it("10.7 Non-admin cannot call admin functions", async function () {
+        it("10.6 Non-admin cannot call admin functions", async function () {
             await expect(staking.connect(signers[0]).setXMRPrice(E18))
                 .to.be.revertedWith("Not admin");
             await expect(staking.connect(signers[0]).dailySettlement(E18))
                 .to.be.revertedWith("Not admin");
         });
 
-        it("10.8 Non-owner cannot call owner functions", async function () {
-            await expect(staking.connect(signers[0]).setDailyRate(500))
-                .to.be.reverted;
+        it("10.7 Non-owner cannot call owner functions", async function () {
             await expect(staking.connect(signers[0]).setBlacklist(signers[1].address, true))
                 .to.be.reverted;
             await expect(staking.connect(signers[0]).emergencyPause())
                 .to.be.reverted;
         });
 
-        it("10.9 Owner can set level thresholds", async function () {
+        it("10.8 Owner can set level thresholds", async function () {
             await staking.setLevelThresholds(0, ethers.parseEther("300"), ethers.parseEther("10000"), 600);
             const info = await staking.getLevelInfo(1);
             expect(info.personalRequired).to.equal(ethers.parseEther("300"));
@@ -1088,7 +1035,7 @@ describe("Comprehensive StakingDApp Tests", function () {
         });
 
         it("13.1 Should submit and confirm transaction", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [500]);
             const tx = await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -1098,13 +1045,13 @@ describe("Comprehensive StakingDApp Tests", function () {
 
         it("13.2 Should execute after enough confirmations", async function () {
             await staking.transferOwnership(await multiSig.getAddress());
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [500]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
-            expect(await staking.dailyRate()).to.equal(100);
+            expect(await staking.withdrawFee()).to.equal(500);
             await multiSig.connect(signers[1]).confirmTransaction(0);
-            expect(await staking.dailyRate()).to.equal(500);
+            expect(await staking.withdrawFee()).to.equal(500);
         });
 
         it("13.3 Should not execute without enough confirmations (3 required)", async function () {
@@ -1112,15 +1059,15 @@ describe("Comprehensive StakingDApp Tests", function () {
             const ms3 = await MultiSigWallet.deploy(owners, 3);
             await ms3.waitForDeployment();
             await staking.transferOwnership(await ms3.getAddress());
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await ms3.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
-            expect(await staking.dailyRate()).to.equal(100);
+            expect(await staking.withdrawFee()).to.equal(500);
             await ms3.connect(signers[1]).confirmTransaction(0);
-            expect(await staking.dailyRate()).to.equal(100);
+            expect(await staking.withdrawFee()).to.equal(500);
             await ms3.connect(signers[2]).confirmTransaction(0);
-            expect(await staking.dailyRate()).to.equal(500);
+            expect(await staking.withdrawFee()).to.equal(300);
         });
 
         it("13.4 Should allow revoking confirmation", async function () {
@@ -1128,7 +1075,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             const ms3 = await MultiSigWallet.deploy(owners, 3);
             await ms3.waitForDeployment();
             await staking.transferOwnership(await ms3.getAddress());
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await ms3.connect(signers[0]).submitTransaction(await staking.getAddress(), 0, calldata);
             await ms3.connect(signers[1]).confirmTransaction(0);
             await ms3.connect(signers[1]).revokeConfirmation(0);
@@ -1228,11 +1175,11 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("14.9 Should get remaining exit limit correctly", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(1000);
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const remaining = await staking.getRemainingExitLimit(u.address);
-            expect(remaining).to.equal(ethers.parseEther("290"));
+            // 100 * 1% = 1 USDT earned, remaining = 300 - 1 = 299
+            expect(remaining).to.equal(ethers.parseEther("299"));
         });
 
         it("14.10 Should handle flash exchange then USDT withdrawal", async function () {
@@ -1281,9 +1228,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await staking.connect(root).withdrawUSDT(withdrawable);
             expect((await staking.getUserInfo(root.address)).pendingUSDT).to.equal(pendingUSDT % unit);
 
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 try {
                     await staking.connect(root).claimStaticReward();
                 } catch (e) { break; }
@@ -1349,9 +1295,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await registerAndInvest(staking, root, ZERO, MIN100);
             await registerAndInvest(staking, mid, root.address, MIN100);
 
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }
             expect((await staking.getUserInfo(root.address)).exited).to.be.true;
@@ -1367,52 +1312,10 @@ describe("Comprehensive StakingDApp Tests", function () {
         });
     });
 
-    describe("16. v3 Features", function () {
+    describe("16. Admin Balance Adjustment", function () {
         beforeEach(freshSetup);
 
-        it("16.1 Should apply user-specific computing power", async function () {
-            const a = signers[0];
-            const b = signers[1];
-            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
-            await registerAndInvest(staking, b, ZERO, ethers.parseEther("1000"));
-
-            await staking.setUserComputingPower(a.address, 200);
-            expect(await staking.userComputingPower(a.address)).to.equal(200);
-
-            await advanceDays(1);
-            await staking.connect(a).claimStaticReward();
-            await staking.connect(b).claimStaticReward();
-
-            const infoA = await staking.getUserInfo(a.address);
-            const infoB = await staking.getUserInfo(b.address);
-            expect(infoA.totalEarned).to.equal(ethers.parseEther("20"));
-            expect(infoB.totalEarned).to.equal(ethers.parseEther("10"));
-        });
-
-        it("16.2 Should fall back to global power when user power reset to 0", async function () {
-            const a = signers[0];
-            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
-            await staking.setUserComputingPower(a.address, 0);
-            await advanceDays(1);
-            await staking.connect(a).claimStaticReward();
-            expect((await staking.getUserInfo(a.address)).totalEarned).to.equal(ethers.parseEther("10"));
-        });
-
-        it("16.3 Should reject user power above 10000", async function () {
-            await expect(staking.setUserComputingPower(signers[0].address, 10001))
-                .to.be.revertedWith("Power too high");
-        });
-
-        it("16.4 estimateStaticReward should use user-specific power", async function () {
-            const a = signers[0];
-            await registerAndInvest(staking, a, ZERO, ethers.parseEther("1000"));
-            await staking.setUserComputingPower(a.address, 200);
-            await advanceDays(1);
-            const [usdtVal] = await staking.estimateStaticReward(a.address);
-            expect(usdtVal).to.equal(ethers.parseEther("20"));
-        });
-
-        it("16.5 Owner can adjust user USDT balance up and down", async function () {
+        it("16.1 Owner can adjust user USDT balance up and down", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
             await staking.adjustUserUSDT(u.address, ethers.parseEther("50"));
@@ -1421,7 +1324,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect((await staking.getUserInfo(u.address)).pendingUSDT).to.equal(ethers.parseEther("30"));
         });
 
-        it("16.6 USDT adjust down clamps to zero instead of underflow", async function () {
+        it("16.2 USDT adjust down clamps to zero instead of underflow", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
             await staking.adjustUserUSDT(u.address, ethers.parseEther("10"));
@@ -1429,7 +1332,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect((await staking.getUserInfo(u.address)).pendingUSDT).to.equal(0);
         });
 
-        it("16.7 Owner can adjust user XMR balance (mints on increase)", async function () {
+        it("16.3 Owner can adjust user XMR balance (mints on increase)", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
             const supplyBefore = await xmrToken.totalSupply();
@@ -1442,7 +1345,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect((await staking.getUserInfo(u.address)).pendingXMR).to.equal(ethers.parseEther("6"));
         });
 
-        it("16.8 XMR adjust down clamps to zero instead of underflow", async function () {
+        it("16.4 XMR adjust down clamps to zero instead of underflow", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
             await staking.adjustUserXMR(u.address, ethers.parseEther("5"));
@@ -1450,16 +1353,14 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect((await staking.getUserInfo(u.address)).pendingXMR).to.equal(0);
         });
 
-        it("16.9 Non-owner cannot call v3 admin functions", async function () {
-            await expect(staking.connect(signers[0]).setUserComputingPower(signers[0].address, 200))
-                .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
+        it("16.5 Non-owner cannot call admin balance functions", async function () {
             await expect(staking.connect(signers[0]).adjustUserUSDT(signers[0].address, E18))
                 .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
             await expect(staking.connect(admin).adjustUserXMR(signers[0].address, E18))
                 .to.be.revertedWithCustomError(staking, "OwnableUnauthorizedAccount");
         });
 
-        it("16.10 getUserInfo returns xmrAddress", async function () {
+        it("16.6 getUserInfo returns xmrAddress", async function () {
             const u = signers[0];
             await staking.connect(u).register(ZERO);
             await staking.connect(u).setXMRAddress(XMR_ADDR);

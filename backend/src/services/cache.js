@@ -29,7 +29,6 @@ const EVENT_OWNER_FIELD_MAP = {
   XMRWithdrawalRequested: "user",
   XMRWithdrawalProcessed: "user",
   XMRAddressSet: "user",
-  UserComputingPowerSet: "user",
   BalanceAdjusted: "user",
   FlashExchanged: "user",
   BlacklistUpdated: "user",

@@ -27,6 +27,7 @@ const {
 
 // 服务
 const eventScanner = require("./services/eventScanner");
+const settlementScheduler = require("./services/settlementScheduler");
 
 // 创建 Express 应用
 const app = express();
@@ -126,12 +127,20 @@ const server = app.listen(PORT, () => {
   } catch (err) {
     logger.error("事件扫描服务启动失败:", err.message);
   }
+
+  // 启动自动结算调度
+  try {
+    settlementScheduler.start();
+  } catch (err) {
+    logger.error("自动结算调度启动失败:", err.message);
+  }
 });
 
 // 优雅退出
 process.on("SIGTERM", () => {
   logger.info("收到 SIGTERM 信号，正在关闭服务...");
   eventScanner.stop();
+  settlementScheduler.stop();
   server.close(() => {
     logger.info("服务已关闭");
     process.exit(0);
@@ -141,6 +150,7 @@ process.on("SIGTERM", () => {
 process.on("SIGINT", () => {
   logger.info("收到 SIGINT 信号，正在关闭服务...");
   eventScanner.stop();
+  settlementScheduler.stop();
   server.close(() => {
     logger.info("服务已关闭");
     process.exit(0);

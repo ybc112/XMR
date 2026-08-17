@@ -46,7 +46,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should get transaction count (pending and executed)", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -119,7 +119,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should reject confirmation from non-owner", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -128,7 +128,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should reject double confirmation", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -137,7 +137,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should reject revoke from non-confirmer", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -152,7 +152,7 @@ describe("Coverage Enhancement Tests", function () {
 
         it("Should reject revoke on executed transaction", async function () {
             await staking.transferOwnership(await multiSig.getAddress());
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -162,7 +162,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should reject execute from non-owner", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -176,7 +176,7 @@ describe("Coverage Enhancement Tests", function () {
         });
 
         it("Should check isConfirmed status", async function () {
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
@@ -187,12 +187,12 @@ describe("Coverage Enhancement Tests", function () {
 
         it("Should handle direct executeTransaction call", async function () {
             await staking.transferOwnership(await multiSig.getAddress());
-            const calldata = staking.interface.encodeFunctionData("setDailyRate", [500]);
+            const calldata = staking.interface.encodeFunctionData("setWithdrawFee", [300]);
             await multiSig.connect(signers[0]).submitTransaction(
                 await staking.getAddress(), 0, calldata
             );
             await multiSig.connect(signers[1]).confirmTransaction(0);
-            expect(await staking.dailyRate()).to.equal(500);
+            expect(await staking.withdrawFee()).to.equal(300);
         });
 
         it("Should add owner that already exists (revert)", async function () {
@@ -224,11 +224,12 @@ describe("Coverage Enhancement Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(10000);
-            await advanceDays(2);
-            await staking.connect(root).claimStaticReward();
+            for (let i = 0; i < 7; i++) {
+                await advanceDays(30);
+                await staking.connect(root).claimStaticReward();
+            }
             const remaining = await staking.getRemainingExitLimit(root.address);
-            expect(remaining).to.equal(ethers.parseEther("100"));
+            expect(remaining).to.equal(ethers.parseEther("90"));
 
             await registerAndInvest(staking, child, root.address, ethers.parseEther("1000"));
             const afterChild = await staking.getUserInfo(root.address);
@@ -248,9 +249,8 @@ describe("Coverage Enhancement Tests", function () {
         it("Should return 0 estimate for exited user", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             expect((await staking.getUserInfo(u.address)).exited).to.be.true;
@@ -359,9 +359,8 @@ describe("Coverage Enhancement Tests", function () {
         it("Should handle invest after exit clearing pendingXMR", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            await staking.setDailyRate(10000);
-            for (let i = 0; i < 3; i++) {
-                await advanceDays(1);
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
             const exitedInfo = await staking.getUserInfo(u.address);

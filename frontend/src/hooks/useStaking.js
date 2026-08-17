@@ -244,24 +244,6 @@ export function useStaking() {
     return tx
   }, [isConnected, stakingContract])
 
-  const setDailyRate = useCallback(async (rate) => {
-    if (!isConnected) throw new Error('请先连接钱包')
-    const contract = stakingContract(true)
-    if (!contract) throw new Error('合约未初始化')
-    const tx = await contract.setDailyRate(ethers.parseEther(rate.toString()))
-    await tx.wait()
-    return tx
-  }, [isConnected, stakingContract])
-
-  const setComputingPower = useCallback(async (power) => {
-    if (!isConnected) throw new Error('请先连接钱包')
-    const contract = stakingContract(true)
-    if (!contract) throw new Error('合约未初始化')
-    const tx = await contract.setComputingPower(power)
-    await tx.wait()
-    return tx
-  }, [isConnected, stakingContract])
-
   const setWithdrawFee = useCallback(async (fee) => {
     if (!isConnected) throw new Error('请先连接钱包')
     const contract = stakingContract(true)
@@ -325,15 +307,6 @@ export function useStaking() {
     return tx
   }, [isConnected, stakingContract])
 
-  const setUserComputingPower = useCallback(async (user, power) => {
-    if (!isConnected) throw new Error('请先连接钱包')
-    const contract = stakingContract(true)
-    if (!contract) throw new Error('合约未初始化')
-    const tx = await contract.setUserComputingPower(user, power)
-    await tx.wait()
-    return tx
-  }, [isConnected, stakingContract])
-
   const adjustUserUSDT = useCallback(async (user, delta) => {
     if (!isConnected) throw new Error('请先连接钱包')
     const contract = stakingContract(true)
@@ -380,8 +353,6 @@ export function useStaking() {
     getRecentEarnings,
     setXMRPrice,
     dailySettlement,
-    setDailyRate,
-    setComputingPower,
     setWithdrawFee,
     setBlacklist,
     emergencyPause,
@@ -389,7 +360,6 @@ export function useStaking() {
     addAdmin,
     removeAdmin,
     processXMRWithdrawal,
-    setUserComputingPower,
     adjustUserUSDT,
     adjustUserXMR
   }

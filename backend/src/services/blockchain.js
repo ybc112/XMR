@@ -102,6 +102,12 @@ async function getContractStats() {
     computingPower: stats.computingPower.toString(),
     withdrawFee: stats.withdrawFee.toString(),
     paused: stats.paused,
+    lastSettlementPeriod: (
+      await stakingContract.lastSettlementPeriod()
+    ).toString(),
+    settlementInterval: (
+      await stakingContract.SETTLEMENT_INTERVAL()
+    ).toString(),
     contractUSDTBalance: {
       raw: stats.contractUSDTBalance.toString(),
       formatted: ethers.formatEther(stats.contractUSDTBalance),

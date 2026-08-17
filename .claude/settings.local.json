@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(node -e ' *)",
+      "Bash(timeout 25 curl -s -o /dev/null -w \"公网后台: HTTP %{http_code}\\\\n\" http://36.151.145.15:8080/)",
+      "Bash(timeout 25 curl -s http://36.151.145.15:8080/api/health)",
+      "Bash(timeout 25 curl -s -o /dev/null -w \"公网后台首页: HTTP %{http_code}\\\\n\" http://36.151.145.15:8080/)",
+      "Bash(npx hardhat *)",
+      "Bash(grep -n -B2 -A 12 'successResponse\\({\\\\s*$' backend/src/routes/adminUsers.js)",
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\);const{ethers}=require\\('ethers'\\);console.log\\('deployer:', new ethers.Wallet\\(process.env.PRIVATE_KEY\\).address\\)\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\({path:'backend/.env'}\\);const{ethers}=require\\('ethers'\\);console.log\\('backend admin:', new ethers.Wallet\\(process.env.ADMIN_PRIVATE_KEY\\).address\\)\")"
+    ]
+  }
+}

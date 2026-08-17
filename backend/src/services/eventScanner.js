@@ -29,12 +29,10 @@ const EVENT_CATEGORY_MAP = {
   Paused: "investments",
   Unpaused: "investments",
   AdminUpdated: "investments",
-  DailyRateUpdated: "investments",
-  ComputingPowerUpdated: "investments",
+  WithdrawFeeUpdated: "investments",
   XMRPriceUpdated: "investments",
   LevelUpdated: "investments",
   XMRAddressSet: "withdrawals",
-  UserComputingPowerSet: "investments",
   BalanceAdjusted: "investments",
 };
 

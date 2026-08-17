@@ -47,15 +47,28 @@ router.post(
 );
 
 /**
- * POST /api/admin/daily-settlement - 每日结算
- * body: { xmrPrice: string }  (ether 字符串)
+ * POST /api/admin/daily-settlement - 手动触发结算
+ * body: { xmrPrice?: string }  (ether 字符串；不传则自动获取实时价格)
  */
 router.post(
   "/daily-settlement",
   asyncHandler(async (req, res) => {
     const { xmrPrice } = req.body;
     if (!xmrPrice) {
-      return res.status(400).json(errorResponse("缺少参数: xmrPrice"));
+      const settlementScheduler = require("../services/settlementScheduler");
+      const result = await settlementScheduler.triggerSettlement();
+      if (!result) {
+        return res
+          .status(400)
+          .json(errorResponse("本轮结算未执行（可能已结算过或无可用价格）"));
+      }
+      logAction(req, {
+        action: "daily-settlement",
+        target: result.price,
+        detail: `自动结算 周期 ${result.period} 价格 ${result.price}`,
+        txHash: result.txHash,
+      });
+      return res.json(successResponse(result, "结算已完成"));
     }
 
     const { ethers } = require("ethers");
@@ -71,54 +84,6 @@ router.post(
       txHash: result.txHash,
     });
     res.json(successResponse(result, "每日结算已完成"));
-  })
-);
-
-/**
- * POST /api/admin/set-daily-rate - 设置日化率
- * body: { rate: number }
- */
-router.post(
-  "/set-daily-rate",
-  asyncHandler(async (req, res) => {
-    const { rate } = req.body;
-    if (rate === undefined || rate === null) {
-      return res.status(400).json(errorResponse("缺少参数: rate"));
-    }
-
-    const result = await blockchain.sendAdminTransaction(() =>
-      blockchain.stakingContractWithSigner.setDailyRate(BigInt(rate))
-    );
-    logAction(req, {
-      action: "set-daily-rate",
-      target: String(rate),
-      txHash: result.txHash,
-    });
-    res.json(successResponse(result, "日化率已更新"));
-  })
-);
-
-/**
- * POST /api/admin/set-computing-power - 设置算力
- * body: { power: number }
- */
-router.post(
-  "/set-computing-power",
-  asyncHandler(async (req, res) => {
-    const { power } = req.body;
-    if (power === undefined || power === null) {
-      return res.status(400).json(errorResponse("缺少参数: power"));
-    }
-
-    const result = await blockchain.sendAdminTransaction(() =>
-      blockchain.stakingContractWithSigner.setComputingPower(BigInt(power))
-    );
-    logAction(req, {
-      action: "set-computing-power",
-      target: String(power),
-      txHash: result.txHash,
-    });
-    res.json(successResponse(result, "算力已更新"));
   })
 );
 

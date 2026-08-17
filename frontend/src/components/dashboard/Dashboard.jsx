@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { NavLink } from 'react-router-dom'
 import Card from '../common/Card.jsx'
 import Button from '../common/Button.jsx'
-import ProgressBar from '../common/ProgressBar.jsx'
-import Badge from '../common/Badge.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import { useToast } from '../common/Toast.jsx'
@@ -74,9 +72,6 @@ export default function Dashboard() {
       setClaiming(false)
     }
   }
-
-  const progressValue = userInfo ? safeNumber(formatEther(userInfo.totalEarned)) : 0
-  const progressMax = userInfo && userInfo.exitLimit > 0n ? safeNumber(formatEther(userInfo.exitLimit)) : 1
 
   const getEarningLabel = (event) => {
     switch (event.type) {
@@ -446,46 +441,6 @@ export default function Dashboard() {
                   <span className="team-stat-label">大区业绩 (USDT)</span>
                 </div>
               </div>
-            </Card>
-
-            <Card title="收益进度" featured icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2V22M17 5H9.5A3.5 3.5 0 009.5 12H14.5A3.5 3.5 0 0114.5 19H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }>
-              <ProgressBar
-                label="出局进度"
-                value={progressValue.toFixed(4)}
-                max={progressMax.toFixed(4)}
-                suffix="USDT"
-                variant="gold"
-              />
-              <div className="reward-display" style={{ marginTop: '8px' }}>
-                <div className="reward-item">
-                  <p className="reward-label">可领取 USDT</p>
-                  <p className="reward-value text-gold">{formatNumber(rewardEst.usdtValue)}</p>
-                </div>
-                <div className="reward-divider"></div>
-                <div className="reward-item">
-                  <p className="reward-label">可领取 XMR</p>
-                  <p className="reward-value text-amber">{formatNumber(rewardEst.xmrValue)}</p>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                fullWidth
-                onClick={handleClaim}
-                loading={claiming}
-                disabled={!userInfo?.isRegistered || (rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.exited}
-              >
-                领取静态收益
-              </Button>
-              {userInfo?.exited && (
-                <p className="text-red text-center mt-2">您已出局，无法继续领取收益</p>
-              )}
-              {userInfo?.isBlacklisted && (
-                <p className="text-red text-center mt-2">您的账户已被拉黑</p>
-              )}
             </Card>
 
             <Card title="最近收益" icon={

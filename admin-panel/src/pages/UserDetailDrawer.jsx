@@ -23,7 +23,6 @@ import {
   getUserEvents,
   getUserReferrals,
   getUserTree,
-  setUserComputingPower,
   adjustBalance,
   setBlacklist,
   processXmrWithdrawal,
@@ -237,6 +236,19 @@ function EventsTab({ address }) {
       },
     },
     {
+      title: '详情',
+      width: 220,
+      render: (_, r) => {
+        if (r.eventType === 'XMRAddressSet') {
+          const args = r.args || {};
+          const addr = args.xmrAddr || args.xmrAddress;
+          if (!addr) return '-';
+          return <CopyableText text={String(addr)} withTooltip />;
+        }
+        return '-';
+      },
+    },
+    {
       title: '交易哈希',
       dataIndex: 'txHash',
       render: (v) => <TxHashLink hash={v} />,
@@ -271,7 +283,6 @@ function EventsTab({ address }) {
 /* ---------------- 管理操作 ---------------- */
 function ActionsTab({ address, detail, onRefresh }) {
   const { message, modal } = App.useApp();
-  const [powerForm] = Form.useForm();
   const [balanceForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
@@ -295,17 +306,6 @@ function ActionsTab({ address, detail, onRefresh }) {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const submitPower = ({ power }) => {
-    modal.confirm({
-      title: '确认调整算力',
-      content: `将把用户 ${address} 的算力设置为 ${power}，确认执行？`,
-      onOk: async () => {
-        const ok = await runOp(() => setUserComputingPower(address, Number(power)), '算力调整已提交');
-        if (ok) powerForm.resetFields();
-      },
-    });
   };
 
   const submitBalance = ({ kind, delta }) => {
@@ -334,22 +334,6 @@ function ActionsTab({ address, detail, onRefresh }) {
 
   return (
     <div>
-      <CardLikeBlock title="调整算力">
-        <Form form={powerForm} layout="inline" onFinish={submitPower} initialValues={{ power: 0 }}>
-          <Form.Item name="power" rules={[{ required: true, message: '请输入算力值' }]}>
-            <InputNumber min={0} max={10000} precision={0} placeholder="0 - 10000" style={{ width: 160 }} />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={submitting}>
-              提交调整
-            </Button>
-          </Form.Item>
-        </Form>
-        <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-          0 = 恢复全局；100 = 1 倍；设置后该用户日化 = dailyRate × power / 10000
-        </Typography.Paragraph>
-      </CardLikeBlock>
-
       <CardLikeBlock title="调整余额">
         <Form
           form={balanceForm}

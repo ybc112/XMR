@@ -57,6 +57,14 @@ const config = {
   startBlock: parseInt(required("START_BLOCK", "0"), 10),
   scanInterval: parseInt(required("SCAN_INTERVAL", "15000"), 10),
   scanBatchSize: parseInt(required("SCAN_BATCH_SIZE", "2000"), 10),
+
+  // 自动结算调度（测试期每 30 分钟一次；上线改回每日 12:00 一次）
+  settlementEnabled: required("SETTLEMENT_ENABLED", "true") === "true",
+  settlementIntervalMinutes: parseInt(
+    required("SETTLEMENT_INTERVAL_MINUTES", "30"),
+    10
+  ),
+  settlementPriceUrl: required("SETTLEMENT_PRICE_URL", ""),
 };
 
 module.exports = config;

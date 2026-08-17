@@ -7,6 +7,8 @@ describe("StakingDApp", function () {
     let usdt, xmrToken, staking;
 
     const ONE_DAY = 86400;
+    const INTERVAL = 1800;
+    const XMR_PRICE = ethers.parseEther("100");
     const MIN_INVESTMENT = ethers.parseEther("100");
     const ZERO = ethers.ZeroAddress;
 
@@ -33,7 +35,7 @@ describe("StakingDApp", function () {
             await usdt.connect(u).approve(await staking.getAddress(), ethers.MaxUint256);
         }
 
-        await staking.connect(admin).dailySettlement(ethers.parseEther("100"));
+        await staking.connect(admin).dailySettlement(XMR_PRICE);
     }
 
     describe("Registration", function () {
@@ -100,23 +102,48 @@ describe("StakingDApp", function () {
         });
     });
 
-    describe("Static Reward", function () {
+    describe("Static Reward - 1% daily locked", function () {
         beforeEach(setup);
 
-        it("Should claim daily static reward in XMR", async function () {
-            await staking.connect(user1).register(ZERO);
-            await staking.connect(user1).invest(MIN_INVESTMENT);
+        it("DAILY_RATE is locked to 100 (1%)", async function () {
+            expect(await staking.DAILY_RATE()).to.equal(100);
+            expect(await staking.SETTLEMENT_INTERVAL()).to.equal(1800);
+        });
 
-            await time.increase(ONE_DAY + 1);
+        it("Manual claim after one full period pays 1%/day pro-rata", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(ethers.parseEther("10000"));
+
+            await time.increase(INTERVAL + 1);
+
+            const est = await staking.estimateStaticReward(user1.address);
+            // 10000 * 1% * (1800/86400) = 2.0833... USDT
+            const expectedUsdt = ethers.parseEther("10000") * 100n * BigInt(INTERVAL) /
+                (10000n * BigInt(ONE_DAY));
+            expect(est.usdtValue).to.equal(expectedUsdt);
+            expect(est.xmrValue).to.equal(expectedUsdt * 10n ** 18n / XMR_PRICE);
 
             await staking.connect(user1).claimStaticReward();
 
             const info = await staking.getUserInfo(user1.address);
-            expect(info.pendingXMR).to.be.gt(0);
-            expect(info.totalEarned).to.be.gt(0);
+            expect(info.pendingXMR).to.equal(expectedUsdt * 10n ** 18n / XMR_PRICE);
+            expect(info.totalEarned).to.equal(expectedUsdt);
+
+            const estAfter = await staking.estimateStaticReward(user1.address);
+            expect(estAfter.usdtValue).to.equal(0);
         });
 
-        it("Should not allow claim on same day", async function () {
+        it("Full day equals exactly 1% of investment", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(ethers.parseEther("10000"));
+
+            await time.increase(ONE_DAY + 1);
+
+            const est = await staking.estimateStaticReward(user1.address);
+            expect(est.usdtValue).to.equal(ethers.parseEther("100"));
+        });
+
+        it("Should not allow claim twice in same period", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
@@ -126,16 +153,85 @@ describe("StakingDApp", function () {
         });
     });
 
+    describe("Automatic Settlement (dailySettlement)", function () {
+        beforeEach(setup);
+
+        it("Settles static rewards for all users without manual claim", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            await time.increase(INTERVAL + 1);
+
+            const tx = await staking.connect(admin).dailySettlement(XMR_PRICE);
+            await expect(tx).to.emit(staking, "StaticRewardClaimed").withArgs(
+                user1.address,
+                MIN_INVESTMENT * 100n * BigInt(INTERVAL) / (10000n * BigInt(ONE_DAY)),
+                MIN_INVESTMENT * 100n * BigInt(INTERVAL) / (10000n * BigInt(ONE_DAY)) * 10n ** 18n / XMR_PRICE
+            );
+            await expect(tx).to.emit(staking, "DailySettlement");
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.pendingXMR).to.be.gt(0);
+            expect(info.totalEarned).to.be.gt(0);
+
+            const est = await staking.estimateStaticReward(user1.address);
+            expect(est.usdtValue).to.equal(0);
+        });
+
+        it("Settles team rewards automatically along with static rewards", async function () {
+            // user1: 3000 自投 + 4 个 2000 直推 -> subArea = 6000 >= 5000 -> level 1
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(ethers.parseEther("3000"));
+
+            for (let i = 0; i < 4; i++) {
+                const u = users[i];
+                await staking.connect(u).register(user1.address);
+                await staking.connect(u).invest(ethers.parseEther("2000"));
+            }
+
+            const info1 = await staking.getUserInfo(user1.address);
+            expect(info1.level).to.equal(1);
+
+            await time.increase(INTERVAL + 1);
+
+            const tx = await staking.connect(admin).dailySettlement(XMR_PRICE);
+            // 每个下级静态收益 2000*1%*(1800/86400)，user1 按 5% 级差抽取团队奖
+            await expect(tx).to.emit(staking, "TeamReward");
+
+            const after = await staking.getUserInfo(user1.address);
+            // 自身静态 + 团队奖均以 XMR 记账
+            expect(after.pendingXMR).to.be.gt(0);
+        });
+
+        it("Cannot settle twice in same period", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            await time.increase(INTERVAL + 1);
+            await staking.connect(admin).dailySettlement(XMR_PRICE);
+
+            await expect(
+                staking.connect(admin).dailySettlement(XMR_PRICE)
+            ).to.be.revertedWith("Already settled this period");
+        });
+
+        it("Non-admin cannot call dailySettlement", async function () {
+            await expect(
+                staking.connect(user1).dailySettlement(XMR_PRICE)
+            ).to.be.revertedWith("Not admin");
+        });
+    });
+
     describe("3x Exit Mechanism", function () {
         beforeEach(setup);
 
         it("Should exit when total earned reaches 3x investment", async function () {
-            await staking.setDailyRate(10000);
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
-            for (let i = 0; i < 3; i++) {
-                await time.increase(ONE_DAY + 1);
+            // 1%/天，单次最多补 30 天（=30%），领 10 次达到 3x
+            for (let i = 0; i < 10; i++) {
+                await time.increase(30 * ONE_DAY + 1);
                 await staking.connect(user1).claimStaticReward();
             }
 
@@ -144,12 +240,11 @@ describe("StakingDApp", function () {
         });
 
         it("Should allow reinvestment after exit", async function () {
-            await staking.setDailyRate(10000);
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
-            for (let i = 0; i < 3; i++) {
-                await time.increase(ONE_DAY + 1);
+            for (let i = 0; i < 10; i++) {
+                await time.increase(30 * ONE_DAY + 1);
                 await staking.connect(user1).claimStaticReward();
             }
 
@@ -170,7 +265,7 @@ describe("StakingDApp", function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
-            await time.increase(ONE_DAY + 1);
+            await time.increase(INTERVAL + 1);
             await staking.connect(user1).claimStaticReward();
 
             const infoBefore = await staking.getUserInfo(user1.address);
@@ -218,6 +313,18 @@ describe("StakingDApp", function () {
             );
         });
 
+        it("Should skip blacklisted user in auto settlement", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+            await staking.setBlacklist(user1.address, true);
+
+            await time.increase(INTERVAL + 1);
+            await staking.connect(admin).dailySettlement(XMR_PRICE);
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.pendingXMR).to.equal(0);
+        });
+
         it("Should allow admin to remove blacklist", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.setBlacklist(user1.address, true);
@@ -254,8 +361,6 @@ describe("StakingDApp", function () {
 
             for (let i = 0; i < 4; i++) {
                 const u = users[i];
-                await usdt.mint(u.address, ethers.parseEther("1000000"));
-                await usdt.connect(u).approve(await staking.getAddress(), ethers.MaxUint256);
                 await staking.connect(u).register(user1.address);
                 await staking.connect(u).invest(ethers.parseEther("2000"));
             }
@@ -270,23 +375,15 @@ describe("StakingDApp", function () {
     describe("Admin Functions", function () {
         beforeEach(setup);
 
-        it("Should update daily rate (owner only)", async function () {
-            await staking.setDailyRate(200);
-            expect(await staking.dailyRate()).to.equal(200);
-        });
-
-        it("Should not allow non-owner to set daily rate", async function () {
-            await expect(staking.connect(user1).setDailyRate(200)).to.be.reverted;
-        });
-
-        it("Should update computing power (owner only)", async function () {
-            await staking.setComputingPower(200);
-            expect(await staking.computingPower()).to.equal(200);
-        });
-
         it("Should allow admin to set XMR price", async function () {
             await staking.connect(admin).setXMRPrice(ethers.parseEther("150"));
             expect(await staking.xmrPrice()).to.equal(ethers.parseEther("150"));
+        });
+
+        it("Stats report locked 1% daily rate", async function () {
+            const stats = await staking.getContractStats();
+            expect(stats.dailyRate).to.equal(100);
+            expect(stats.computingPower).to.equal(100);
         });
     });
 });

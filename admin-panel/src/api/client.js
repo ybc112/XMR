@@ -75,8 +75,6 @@ export const getUserEvents = (address, params) =>
 export const getUserTree = (address, params) =>
   client.get(`/api/admin/users/${address}/tree`, { params });
 
-export const setUserComputingPower = (address, power) =>
-  client.post(`/api/admin/users/${address}/computing-power`, { power });
 export const adjustBalance = (address, payload) =>
   client.post(`/api/admin/users/${address}/adjust-balance`, payload);
 export const setBlacklist = (address, status) =>
@@ -97,8 +95,8 @@ export const executeMultisigTx = (txId) => client.post(`/api/multisig/execute/${
 
 // ---------- 全局参数 ----------
 export const setXmrPrice = (price) => client.post('/api/admin/set-xmr-price', { price });
-export const setDailyRate = (rate) => client.post('/api/admin/set-daily-rate', { rate });
-export const setComputingPower = (power) => client.post('/api/admin/set-computing-power', { power });
+export const triggerSettlement = (xmrPrice) =>
+  client.post('/api/admin/daily-settlement', xmrPrice ? { xmrPrice } : {});
 export const setWithdrawFee = (fee) => client.post('/api/admin/set-withdraw-fee', { fee });
 export const emergencyPause = () => client.post('/api/admin/emergency-pause');
 export const emergencyUnpause = () => client.post('/api/admin/emergency-unpause');

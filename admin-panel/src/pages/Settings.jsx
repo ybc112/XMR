@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { App, Button, Card, Col, Form, Input, InputNumber, Row, Space, Tag, Typography } from 'antd';
 import {
   getStats,
-  setComputingPower,
-  setDailyRate,
+  triggerSettlement,
   setWithdrawFee,
   setXmrPrice,
   emergencyPause,
@@ -28,8 +27,6 @@ export default function Settings() {
   const [stats, setStats] = useState(null);
   const [saving, setSaving] = useState('');
 
-  const [rateForm] = Form.useForm();
-  const [powerForm] = Form.useForm();
   const [feeForm] = Form.useForm();
   const [priceForm] = Form.useForm();
 
@@ -45,11 +42,9 @@ export default function Settings() {
 
   useEffect(() => {
     if (!stats) return;
-    rateForm.setFieldsValue({ rate: Number(stats.dailyRate) || 0 });
-    powerForm.setFieldsValue({ power: Number(stats.computingPower) || 0 });
     feeForm.setFieldsValue({ fee: Number(stats.withdrawFee) || 0 });
     priceForm.setFieldsValue({ price: stats.xmrPrice != null ? String(stats.xmrPrice) : '' });
-  }, [stats, rateForm, powerForm, feeForm, priceForm]);
+  }, [stats, feeForm, priceForm]);
 
   const runSave = async (key, fn, label) => {
     setSaving(key);
@@ -74,52 +69,31 @@ export default function Settings() {
   const confirmThen = (title, content, onOk) => modal.confirm({ title, content, onOk });
 
   const paused = !!(stats && stats.paused);
+  const rate = stats && stats.dailyRate != null ? Number(stats.dailyRate) / 100 : null;
+
+  const runSettlement = () =>
+    confirmThen(
+      '手动触发结算',
+      '将按当前实时 XMR 价格执行一轮结算，为所有合格用户发放静态收益与团队收益。正式环境建议在每日 12:00 后触发（测试期为每 30 分钟自动结算）。确认继续？',
+      async () => {
+        setSaving('settle');
+        try {
+          const res = await triggerSettlement();
+          message.success(
+            `结算已完成：周期 ${res?.period ?? '-'}，价格 ${res?.price ?? '-'} USDT，交易 ${res?.txHash ?? '-'}`,
+          );
+          loadStats();
+        } catch (e) {
+          message.error(e.message);
+        } finally {
+          setSaving('');
+        }
+      },
+    );
 
   return (
     <div>
       <Row gutter={[12, 12]}>
-        <ParamCard title="日化率" tip="单位为基点：100 = 1%。设置用户全局默认日化收益率。">
-          <Form
-            form={rateForm}
-            layout="inline"
-            onFinish={({ rate }) =>
-              confirmThen('确认修改日化率？', `新日化率：${rate} 基点（${rate / 100}%）`, () =>
-                runSave('rate', () => setDailyRate(Number(rate)), '日化率'),
-              )
-            }
-          >
-            <Form.Item name="rate" rules={[{ required: true, message: '请输入日化率' }]}>
-              <InputNumber min={0} precision={0} style={{ width: 180 }} addonAfter="基点" />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" loading={saving === 'rate'}>
-                保存
-              </Button>
-            </Form.Item>
-          </Form>
-        </ParamCard>
-
-        <ParamCard title="算力" tip="范围 1 - 10000，100 = 1 倍。全局默认算力系数。">
-          <Form
-            form={powerForm}
-            layout="inline"
-            onFinish={({ power }) =>
-              confirmThen('确认修改算力？', `新算力：${power}（${power / 100} 倍）`, () =>
-                runSave('power', () => setComputingPower(Number(power)), '算力'),
-              )
-            }
-          >
-            <Form.Item name="power" rules={[{ required: true, message: '请输入算力' }]}>
-              <InputNumber min={1} max={10000} precision={0} style={{ width: 180 }} />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" loading={saving === 'power'}>
-                保存
-              </Button>
-            </Form.Item>
-          </Form>
-        </ParamCard>
-
         <ParamCard title="提现费率" tip="单位为基点：100 = 1%。应用于 USDT 提现手续费。">
           <Form
             form={feeForm}
@@ -171,6 +145,23 @@ export default function Settings() {
               </Button>
             </Form.Item>
           </Form>
+        </ParamCard>
+
+        <ParamCard
+          title="手动结算"
+          tip="按实时 XMR 价格立即执行一轮结算（静态收益 + 团队收益）。正式环境建议在每日 12:00 后触发；测试期后端每 30 分钟自动结算。"
+        >
+          <Space direction="vertical" size={4}>
+            <Space>
+              <Tag color="gold">日化率锁定 {rate != null ? `${rate}%` : '-'}</Tag>
+              <Tag>
+                上次结算周期 {stats && stats.lastSettlementPeriod != null ? Number(stats.lastSettlementPeriod) : '-'}
+              </Tag>
+            </Space>
+            <Button type="primary" loading={saving === 'settle'} onClick={runSettlement}>
+              立即执行结算
+            </Button>
+          </Space>
         </ParamCard>
       </Row>
 

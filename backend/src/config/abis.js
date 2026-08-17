@@ -94,8 +94,29 @@ const STAKING_DAPP_ABI = [
     type: "function",
   },
   {
-    inputs: [{ name: "", type: "address" }],
-    name: "userComputingPower",
+    inputs: [],
+    name: "lastSettlementPeriod",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getUserCount",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "SETTLEMENT_INTERVAL",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "SETTLEMENT_ANCHOR",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
@@ -198,30 +219,6 @@ const STAKING_DAPP_ABI = [
   {
     inputs: [{ name: "_user", type: "address" }],
     name: "processXMRWithdrawal",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "_rate", type: "uint256" }],
-    name: "setDailyRate",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "_power", type: "uint256" }],
-    name: "setComputingPower",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "_user", type: "address" },
-      { name: "_power", type: "uint256" },
-    ],
-    name: "setUserComputingPower",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -397,15 +394,6 @@ const STAKING_DAPP_ABI = [
     anonymous: false,
     inputs: [
       { indexed: true, name: "user", type: "address" },
-      { indexed: false, name: "power", type: "uint256" },
-    ],
-    name: "UserComputingPowerSet",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, name: "user", type: "address" },
       { indexed: false, name: "kind", type: "string" },
       { indexed: false, name: "delta", type: "int256" },
       { indexed: false, name: "operator", type: "address" },
@@ -460,24 +448,6 @@ const STAKING_DAPP_ABI = [
       { indexed: false, name: "status", type: "bool" },
     ],
     name: "AdminUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: false, name: "oldRate", type: "uint256" },
-      { indexed: false, name: "newRate", type: "uint256" },
-    ],
-    name: "DailyRateUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: false, name: "oldPower", type: "uint256" },
-      { indexed: false, name: "newPower", type: "uint256" },
-    ],
-    name: "ComputingPowerUpdated",
     type: "event",
   },
   {

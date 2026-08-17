@@ -469,6 +469,15 @@ const STAKING_DAPP_ABI = [
     name: "LevelUpdated",
     type: "event",
   },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, name: "oldFee", type: "uint256" },
+      { indexed: false, name: "newFee", type: "uint256" },
+    ],
+    name: "WithdrawFeeUpdated",
+    type: "event",
+  },
 ];
 
 // ======================== XMRToken 合约ABI ========================

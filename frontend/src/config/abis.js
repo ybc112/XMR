@@ -75,6 +75,7 @@ export const STAKING_DAPP_ABI = [
   'event BlacklistUpdated(address indexed user, bool status)',
   'event XMRPriceUpdated(uint256 oldPrice, uint256 newPrice)',
   'event LevelUpdated(address indexed user, uint8 oldLevel, uint8 newLevel)',
+  'event WithdrawFeeUpdated(uint256 oldFee, uint256 newFee)',
   'event GenerationReward(address indexed receiver, address indexed investor, uint8 generation, uint256 amount)',
   'event TeamReward(address indexed receiver, address indexed investor, uint8 level, uint256 amount)',
   'event Exited(address indexed user, uint256 totalEarned)'

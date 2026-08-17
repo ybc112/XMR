@@ -99,12 +99,28 @@ async function scanBlockRange(fromBlock, toBlock) {
     stakingContract.interface.getEvent(name).topicHash
   );
 
-  const rawLogs = await provider.getLogs({
-    address: config.stakingContractAddress,
-    topics: [eventTopics],
-    fromBlock,
-    toBlock,
-  });
+  // 带重试的 getLogs（公共节点限流严重）
+  let rawLogs;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      rawLogs = await provider.getLogs({
+        address: config.stakingContractAddress,
+        topics: [eventTopics],
+        fromBlock,
+        toBlock,
+      });
+      break;
+    } catch (e) {
+      const msg = String(e.message || "");
+      if (attempt < 4 && (msg.includes("rate limit") || msg.includes("429") || msg.includes("missing response"))) {
+        const wait = Math.min(2000 * (attempt + 1), 10000);
+        logger.warn(`getLogs 限流，${wait / 1000}s 后重试 (${attempt + 1}/5)`);
+        await new Promise(r => setTimeout(r, wait));
+      } else {
+        throw e;
+      }
+    }
+  }
 
   const totalEvents = [];
   for (const rawLog of rawLogs) {

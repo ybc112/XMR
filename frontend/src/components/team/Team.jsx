@@ -428,30 +428,30 @@ export default function Team() {
       </div>
 
       <div className="team-grid">
-        <Card title="团队奖励规则" subtitle="团队奖按伞下所有账户的静态收益结算">
+        <Card title="团队奖励规则" subtitle="团队奖按伞下所有账户静态收益之和结算">
           <div className="reward-rule-list">
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#B8860B' }}></span>
               <span className="reward-rule-text">
-                <strong>级差奖励：</strong>按网体中最高级别对应的费率差计算，例如 M2（10%）下属 M1（5%）时，M2 拿差额 5%。
+                <strong>结算基数：</strong>您伞下所有账户（大区 + 小区）静态收益之和，升级考核只看小区业绩。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#3B82F6' }}></span>
               <span className="reward-rule-text">
-                <strong>平级奖励：</strong>伞下出现同级账户时，上级拿该账户静态收益的 10%。
+                <strong>级差奖励：</strong>按伞下最高级别对应的费率差计算，例如您是 M4、伞下最高 M3，则拿 (20% − 15%) = 5% 的级差。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#EF4444' }}></span>
               <span className="reward-rule-text">
-                <strong>超越奖励：</strong>伞下出现更高级别账户时，上级仍拿该账户静态收益的 10%。
+                <strong>平级 / 超越：</strong>伞下出现同级或更高级别时无级差，只拿结算基数的 10%。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#10B981' }}></span>
               <span className="reward-rule-text">
-                <strong>全网结算：</strong>团队奖覆盖整个伞体（大区 + 小区），每日自动结算到账。
+                <strong>全网结算：</strong>团队奖覆盖整个伞体，每日结算自动到账（XMR），总拨出最高 45%（M9）。
               </span>
             </div>
           </div>

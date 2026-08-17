@@ -10,7 +10,7 @@ export const STAKING_DAPP_ABI = [
   'function setXMRAddress(string calldata _addr) external',
 
   // 查询函数
-  'function getUserInfo(address _user) external view returns (tuple(address referrer, uint256 personalAmount, uint256 totalEarned, uint256 exitLimit, bool isBlacklisted, bool isRegistered, bool exited, uint8 level, uint256 pendingUSDT, uint256 pendingXMR, uint256 teamTotalVolume, uint256 maxAreaVolume, uint256 memberId, uint256 xmrWithdrawalPending, string xmrAddress))',
+  'function getUserInfo(address _user) external view returns (tuple(address referrer, uint256 personalAmount, uint256 totalEarned, uint256 exitLimit, bool isBlacklisted, bool isRegistered, bool exited, uint8 level, uint256 pendingUSDT, uint256 pendingXMR, uint256 teamTotalVolume, uint256 maxAreaVolume, uint256 memberId, uint256 xmrWithdrawalPending, string xmrAddress, uint256 teamStaticEarnings, uint256 teamRewardDebt, uint8 maxChildLevel))',
   'function getContractStats() external view returns (tuple(uint256 totalUsers, uint256 totalUSDTDeposited, uint256 xmrPrice, uint256 dailyRate, uint256 computingPower, uint256 withdrawFee, bool paused, uint256 contractUSDTBalance, uint256 contractXMRBalance))',
   'function getDirectReferrals(address _user) external view returns (address[])',
   'function getDirectReferralCount(address _user) external view returns (uint256)',

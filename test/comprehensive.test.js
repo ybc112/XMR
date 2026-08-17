@@ -371,20 +371,19 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(subArea).to.equal(ethers.parseEther("5000"));
         });
 
-        // 团队奖按伞下账户的静态收益基数分配（claim 时触发，XMR 记账）：
-        // 静态收益价值 = personalAmount × 日化率 × 天数；
-        // 上级按级差/平级/超越规则拿该价值的百分比，折算 XMR = 价值 × 1e18 / xmrPrice(100)
-        it("5.3 Should pay differential team reward based on static reward (M2 over M1)", async function () {
+        // 团队奖按伞下所有账户累计静态收益之和结算（dailySettlement 统一结算，XMR 记账）：
+        // 基数 = 伞下账户静态收益之和；级差 = 基数 × (用户费率 - 伞下最高费率)；平级/超越 = 基数 × 10%
+        it("5.3 Should pay differential team reward based on total static earnings (M2 over M1)", async function () {
             const root = signers[0];
             const mid = signers[1];
             const leaf = signers[2];
 
-            // root: 个人 10000 + 小区 25000 -> M2 (10%)
+            // root: 个人 10000 + 小区 34500 -> M2 (10%)
             await registerAndInvest(staking, root, ZERO, ethers.parseEther("10000"));
             await registerAndInvest(staking, signers[3], root.address, ethers.parseEther("25000"));
             await registerAndInvest(staking, signers[4], root.address, ethers.parseEther("25000"));
 
-            // mid: 个人 500 + 小区 6000 -> M1 (5%)
+            // mid: 个人 500 + 小区 7000 -> M1 (5%)
             await registerAndInvest(staking, mid, root.address, ethers.parseEther("500"));
             for (let i = 5; i <= 8; i++) {
                 await registerAndInvest(staking, signers[i], mid.address, ethers.parseEther("2000"));
@@ -397,27 +396,34 @@ describe("Comprehensive StakingDApp Tests", function () {
 
             await registerAndInvest(staking, leaf, mid.address, ethers.parseEther("1000"));
 
-            // leaf 的静态收益 = 1000 × 48% = 480U 价值；mid/root 未出局
+            // 48 周期（1天）静态收益 = 本金 × 48%：root 4800 / mid 240 / s3,s4 各 12000 / s5-s8 各 960 / leaf 480
+            await advanceDays(1);
+            for (const u of [root, mid, leaf, signers[3], signers[4], signers[5], signers[6], signers[7], signers[8]]) {
+                await staking.connect(u).claimStaticReward();
+            }
+
+            // 团队奖基数（伞下静态之和，不含自己）：
+            // mid  = leaf 480 + s5-s8 3840 = 4320U
+            // root = mid 240 + leaf 480 + s5-s8 3840 + s3,s4 24000 = 28560U
             const midXmrBefore = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrBefore = (await staking.getUserInfo(root.address)).pendingXMR;
-            await advanceDays(1);
-            await staking.connect(leaf).claimStaticReward();
+            await staking.connect(admin).dailySettlement(ethers.parseEther("100"));
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M1 5%): 480 × 5% = 24U 价值 -> XMR 0.24e18
-            // root (M2 10%): 480 × (10%-5%) = 24U 价值 -> XMR 0.24e18
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.24"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.24"));
+            // mid (M1 5%, 伞下最高无级别): 4320 × 5% = 216U -> XMR 2.16e18
+            // root (M2 10%, 伞下最高 M1 5%): 28560 × (10%-5%) = 1428U -> XMR 14.28e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("2.16"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("14.28"));
         });
 
-        it("5.4 Should pay equal level bonus (10% of static reward)", async function () {
+        it("5.4 Should pay equal level bonus (10% of total static earnings)", async function () {
             const root = signers[0];
             const mid = signers[1];
 
-            // root: 个人 500 + 小区 8000 (signers[9] 分支) -> M1
-            // mid:  个人 500 + 小区 5000 (3 个 2500 分支) -> M1  -> 平级
-            await registerAndInvest(staking, root, ZERO, ethers.parseEther("500"));
+            // root: 个人 2000 + 小区 9000 (signers[9] 分支 8000 为大区) -> M1（投资加大避免 3x 出局截断）
+            // mid:  个人 500 + 小区 6000 (3 个 2500 分支) -> M1  -> 平级
+            await registerAndInvest(staking, root, ZERO, ethers.parseEther("2000"));
             await registerAndInvest(staking, mid, root.address, ethers.parseEther("500"));
             for (let i = 3; i <= 5; i++) {
                 await registerAndInvest(staking, signers[i], mid.address, ethers.parseEther("2500"));
@@ -432,26 +438,32 @@ describe("Comprehensive StakingDApp Tests", function () {
             const leaf = signers[2];
             await registerAndInvest(staking, leaf, mid.address, ethers.parseEther("1000"));
 
+            // 48 周期静态收益 = 本金 × 48%：root 240 / mid 240 / s3-s5 各 1200 / s9 3840 / leaf 480
+            await advanceDays(1);
+            for (const u of [root, mid, leaf, signers[3], signers[4], signers[5], signers[9]]) {
+                await staking.connect(u).claimStaticReward();
+            }
+
+            // 基数：mid = 3600 + 480 = 4080U；root = 240 + 3600 + 3840 + 480 = 8160U
             const midXmrBefore = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrBefore = (await staking.getUserInfo(root.address)).pendingXMR;
-            await advanceDays(1);
-            await staking.connect(leaf).claimStaticReward();
+            await staking.connect(admin).dailySettlement(ethers.parseEther("100"));
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M1 5%): 480 × 5% = 24U 价值 -> XMR 0.24e18
-            // root 平级: 480 × 10% = 48U 价值 -> XMR 0.48e18
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.24"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.48"));
+            // mid (M1 5%, 伞下无级别): 4080 × 5% = 204U -> XMR 2.04e18
+            // root 平级 (M1, 伞下最高 M1): 8160 × 10% = 816U -> XMR 8.16e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("2.04"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("8.16"));
         });
 
-        it("5.5 Should pay exceed bonus (10% of static reward when subordinate has higher level)", async function () {
+        it("5.5 Should pay exceed bonus (10% of total static earnings when subordinate has higher level)", async function () {
             const root = signers[0];
             const mid = signers[1];
 
-            // root: 个人 1000 + 小区 5000 (signers[8] 分支) -> M1
+            // root: 个人 2000 + 小区 8000 (signers[8] 分支) -> M1（投资加大避免 3x 出局截断）
             // mid:  个人 2000 + 小区 20000 (5 个 5000 分支) -> M2  -> 超越
-            await registerAndInvest(staking, root, ZERO, ethers.parseEther("1000"));
+            await registerAndInvest(staking, root, ZERO, ethers.parseEther("2000"));
             await registerAndInvest(staking, mid, root.address, ethers.parseEther("2000"));
             for (let i = 3; i <= 7; i++) {
                 await registerAndInvest(staking, signers[i], mid.address, ethers.parseEther("5000"));
@@ -466,17 +478,23 @@ describe("Comprehensive StakingDApp Tests", function () {
             const leaf = signers[2];
             await registerAndInvest(staking, leaf, mid.address, ethers.parseEther("1000"));
 
+            // 48 周期静态收益 = 本金 × 48%：root 480 / mid 960 / s3-s7 各 2400 / s8 2400 / leaf 480
+            await advanceDays(1);
+            for (const u of [root, mid, leaf, signers[3], signers[4], signers[5], signers[6], signers[7], signers[8]]) {
+                await staking.connect(u).claimStaticReward();
+            }
+
+            // 基数：mid = 12000 + 480 = 12480U；root = 960 + 12000 + 2400 + 480 = 15840U
             const midXmrBefore = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrBefore = (await staking.getUserInfo(root.address)).pendingXMR;
-            await advanceDays(1);
-            await staking.connect(leaf).claimStaticReward();
+            await staking.connect(admin).dailySettlement(ethers.parseEther("100"));
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M2 10%): 480 × 10% = 48U 价值 -> XMR 0.48e18
-            // root 超越 (等级低于 mid): 480 × 10% = 48U 价值 -> XMR 0.48e18
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.48"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.48"));
+            // mid (M2 10%, 伞下无级别): 12480 × 10% = 1248U -> XMR 12.48e18
+            // root 超越 (M1, 伞下最高 M2): 15840 × 10% = 1584U -> XMR 15.84e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("12.48"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("15.84"));
         });
 
         it("5.6 Should not pay team reward to user with no level", async function () {
@@ -487,11 +505,13 @@ describe("Comprehensive StakingDApp Tests", function () {
             const info = await staking.getUserInfo(root.address);
             expect(info.level).to.equal(0);
 
-            // child 领取静态收益 1U 价值；root 无等级 -> 团队奖为 0（推荐奖仍正常，记 pendingUSDT）
+            // child 领取静态收益；root 无等级 -> dailySettlement 后团队奖为 0
+            // root 自己的静态收益 48U 由 dailySettlement 自动结算 -> 0.48 XMR（推荐奖记 pendingUSDT）
             await advanceDays(1);
             await staking.connect(child).claimStaticReward();
+            await staking.connect(admin).dailySettlement(ethers.parseEther("100"));
             const after = await staking.getUserInfo(root.address);
-            expect(after.pendingXMR).to.equal(0n);
+            expect(after.pendingXMR).to.equal(ethers.parseEther("0.48"));
             expect(after.pendingUSDT).to.equal(MIN100 * 1000n / 10000n);
         });
 

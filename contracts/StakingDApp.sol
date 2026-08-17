@@ -295,7 +295,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 periodsPassed = _targetPeriod - user.lastClaimDay;
         if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
 
-        uint256 usdtReward = user.personalAmount * DAILY_RATE * periodsPassed * SETTLEMENT_INTERVAL / (10000 * DAY_SECONDS);
+        uint256 usdtReward = user.personalAmount * DAILY_RATE * periodsPassed / 10000;
 
         uint256 cappedReward = _applyExitLimit(_user, usdtReward);
         if (cappedReward == 0) return;
@@ -686,7 +686,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 periodsPassed = currentPeriod - user.lastClaimDay;
         if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
 
-        usdtValue = user.personalAmount * DAILY_RATE * periodsPassed * SETTLEMENT_INTERVAL / (10000 * DAY_SECONDS);
+        usdtValue = user.personalAmount * DAILY_RATE * periodsPassed / 10000;
 
         uint256 remaining = user.exitLimit > user.totalEarned
             ? user.exitLimit - user.totalEarned

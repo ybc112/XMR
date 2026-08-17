@@ -207,7 +207,21 @@ async function main() {
     console.log(`${stepLabel("MultiSigWallet 已部署，跳过")}:`, state.multiSig);
   }
 
-  // 5. transferOwnership (StakingDApp)
+  // 5. addAdmin(部署账户) —— 在转移所有权前，让部署账户成为 admin
+  //    后端结算调度器用此账户私钥调用 dailySettlement 实现自动结算（资金操作仍归多签）
+  if (!state.adminSet) {
+    console.log(`${stepLabel("添加部署账户为结算 admin")} ...`);
+    const staking = new ethers.Contract(state.stakingDApp, stakingAbi, wallet);
+    const tx = await staking.addAdmin(wallet.address);
+    await tx.wait();
+    state.adminSet = true;
+    saveState(state);
+    console.log("   结算 admin:", wallet.address);
+  } else {
+    console.log(`${stepLabel("结算 admin 已设置，跳过")}`);
+  }
+
+  // 6. transferOwnership (StakingDApp)
   if (!state.ownershipStaking) {
     console.log(`${stepLabel("StakingDApp 所有权转给多签")} ...`);
     const staking = new ethers.Contract(state.stakingDApp, stakingAbi, wallet);
@@ -219,7 +233,7 @@ async function main() {
     console.log(`${stepLabel("StakingDApp 所有权已转，跳过")}`);
   }
 
-  // 6. transferOwnership (XMRToken)
+  // 7. transferOwnership (XMRToken)
   if (!state.ownershipXmr) {
     console.log(`${stepLabel("XMRToken 所有权转给多签")} ...`);
     const xmr = new ethers.Contract(state.xmrToken, xmrAbi, wallet);

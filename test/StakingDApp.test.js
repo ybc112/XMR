@@ -110,16 +110,15 @@ describe("StakingDApp", function () {
             expect(await staking.SETTLEMENT_INTERVAL()).to.equal(1800);
         });
 
-        it("Manual claim after one full period pays 1%/day pro-rata", async function () {
+        it("Manual claim after one full period pays full 1% of investment", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(ethers.parseEther("10000"));
 
             await time.increase(INTERVAL + 1);
 
             const est = await staking.estimateStaticReward(user1.address);
-            // 10000 * 1% * (1800/86400) = 2.0833... USDT
-            const expectedUsdt = ethers.parseEther("10000") * 100n * BigInt(INTERVAL) /
-                (10000n * BigInt(ONE_DAY));
+            // 10000 * 1% = 100 USDT (每周期=一天)
+            const expectedUsdt = ethers.parseEther("10000") * 100n / 10000n;
             expect(est.usdtValue).to.equal(expectedUsdt);
             expect(est.xmrValue).to.equal(expectedUsdt * 10n ** 18n / XMR_PRICE);
 
@@ -133,14 +132,14 @@ describe("StakingDApp", function () {
             expect(estAfter.usdtValue).to.equal(0);
         });
 
-        it("Full day equals exactly 1% of investment", async function () {
+        it("48 periods (one real day) equals 48% of investment", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(ethers.parseEther("10000"));
 
             await time.increase(ONE_DAY + 1);
 
             const est = await staking.estimateStaticReward(user1.address);
-            expect(est.usdtValue).to.equal(ethers.parseEther("100"));
+            expect(est.usdtValue).to.equal(ethers.parseEther("4800"));
         });
 
         it("Should not allow claim twice in same period", async function () {
@@ -165,8 +164,8 @@ describe("StakingDApp", function () {
             const tx = await staking.connect(admin).dailySettlement(XMR_PRICE);
             await expect(tx).to.emit(staking, "StaticRewardClaimed").withArgs(
                 user1.address,
-                MIN_INVESTMENT * 100n * BigInt(INTERVAL) / (10000n * BigInt(ONE_DAY)),
-                MIN_INVESTMENT * 100n * BigInt(INTERVAL) / (10000n * BigInt(ONE_DAY)) * 10n ** 18n / XMR_PRICE
+                MIN_INVESTMENT * 100n / 10000n,
+                MIN_INVESTMENT * 100n / 10000n * 10n ** 18n / XMR_PRICE
             );
             await expect(tx).to.emit(staking, "DailySettlement");
 
@@ -195,7 +194,7 @@ describe("StakingDApp", function () {
             await time.increase(INTERVAL + 1);
 
             const tx = await staking.connect(admin).dailySettlement(XMR_PRICE);
-            // 每个下级静态收益 2000*1%*(1800/86400)，user1 按 5% 级差抽取团队奖
+            // 每个下级静态收益 2000*1%（每周期=一天），user1 按 5% 级差抽取团队奖
             await expect(tx).to.emit(staking, "TeamReward");
 
             const after = await staking.getUserInfo(user1.address);
@@ -229,9 +228,9 @@ describe("StakingDApp", function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
-            // 1%/天，单次最多补 30 天（=30%），领 10 次达到 3x
+            // 每周期 1%，单次最多补 30 个周期（=30%），领 10 次达到 3x
             for (let i = 0; i < 10; i++) {
-                await time.increase(30 * ONE_DAY + 1);
+                await time.increase(30 * INTERVAL + 1);
                 await staking.connect(user1).claimStaticReward();
             }
 
@@ -244,7 +243,7 @@ describe("StakingDApp", function () {
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
             for (let i = 0; i < 10; i++) {
-                await time.increase(30 * ONE_DAY + 1);
+                await time.increase(30 * INTERVAL + 1);
                 await staking.connect(user1).claimStaticReward();
             }
 

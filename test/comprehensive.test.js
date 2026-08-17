@@ -158,13 +158,14 @@ describe("Comprehensive StakingDApp Tests", function () {
     describe("3. Static Income (Daily 1%)", function () {
         beforeEach(freshSetup);
 
-        it("3.1 Should calculate 1% daily reward correctly in USDT", async function () {
+        it("3.1 Should calculate 1% per period reward correctly in USDT", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("10"));
+            // advanceDays(1) = 48 periods (1800s each) x 1% = 48% => 480 USDT
+            expect(info.totalEarned).to.equal(ethers.parseEther("480"));
         });
 
         it("3.2 Should convert USDT reward to XMR at current price", async function () {
@@ -173,7 +174,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            const expectedXMR = ethers.parseEther("10") * E18 / ethers.parseEther("100");
+            const expectedXMR = ethers.parseEther("480") * E18 / ethers.parseEther("100");
             expect(info.pendingXMR).to.equal(expectedXMR);
         });
 
@@ -183,7 +184,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(5);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("50"));
+            // advanceDays(5) = 240 periods x 1% = 240% => 2400 USDT (below 3x exit limit)
+            expect(info.totalEarned).to.equal(ethers.parseEther("2400"));
         });
 
         it("3.4 Should cap claim at 30 days maximum", async function () {
@@ -192,7 +194,9 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(60);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("300"));
+            // 60 days = 2880 periods, capped at MAX_CLAIM_PERIODS=1440 => 14400 USDT,
+            // further capped by 3x exit limit (3000) => user exits with 3000
+            expect(info.totalEarned).to.equal(ethers.parseEther("3000"));
         });
 
         it("3.5 Daily rate is locked to 100 (1%) and cannot be changed", async function () {
@@ -202,7 +206,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("10"));
+            expect(info.totalEarned).to.equal(ethers.parseEther("480"));
         });
 
         it("3.9 Should reject claim from unregistered user", async function () {
@@ -220,7 +224,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("3.11 Should reject claim from exited user", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            for (let i = 0; i < 10; i++) {
+            // advanceDays(30) = 1440 periods x 1% = 1440% -> capped at 3x exit limit in one claim
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -244,7 +249,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            const expectedXMR = ethers.parseEther("10") * E18 / ethers.parseEther("200");
+            const expectedXMR = ethers.parseEther("480") * E18 / ethers.parseEther("200");
             expect(info.pendingXMR).to.equal(expectedXMR);
         });
     });
@@ -319,7 +324,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, MIN100);
-            for (let i = 0; i < 10; i++) {
+            // one max claim (1440 periods x 1%) reaches the 3x exit limit
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }
@@ -391,7 +397,7 @@ describe("Comprehensive StakingDApp Tests", function () {
 
             await registerAndInvest(staking, leaf, mid.address, ethers.parseEther("1000"));
 
-            // leaf 的静态收益 = 1000 × 1% = 10U 价值；mid/root 未出局
+            // leaf 的静态收益 = 1000 × 48% = 480U 价值；mid/root 未出局
             const midXmrBefore = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrBefore = (await staking.getUserInfo(root.address)).pendingXMR;
             await advanceDays(1);
@@ -399,10 +405,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M1 5%): 10 × 5% = 0.5U 价值 -> XMR 5e15
-            // root (M2 10%): 10 × (10%-5%) = 0.5U 价值 -> XMR 5e15
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.005"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.005"));
+            // mid (M1 5%): 480 × 5% = 24U 价值 -> XMR 0.24e18
+            // root (M2 10%): 480 × (10%-5%) = 24U 价值 -> XMR 0.24e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.24"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.24"));
         });
 
         it("5.4 Should pay equal level bonus (10% of subordinate team reward)", async function () {
@@ -433,10 +439,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M1 5%): 10 × 5% = 0.5U 价值 -> XMR 5e15
-            // root 平级: 0.5 × 10% = 0.05U 价值 -> XMR 5e14
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.005"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.0005"));
+            // mid (M1 5%): 480 × 5% = 24U 价值 -> XMR 0.24e18
+            // root 平级: 24 × 10% = 2.4U 价值 -> XMR 0.024e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.24"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.024"));
         });
 
         it("5.5 Should pay exceed bonus (10% when subordinate has higher level)", async function () {
@@ -467,10 +473,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             const midXmrAfter = (await staking.getUserInfo(mid.address)).pendingXMR;
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
-            // mid (M2 10%): 10 × 10% = 1U 价值 -> XMR 1e16
-            // root 超越 (等级低于 mid): 1 × 10% = 0.1U 价值 -> XMR 1e15
-            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.01"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.001"));
+            // mid (M2 10%): 480 × 10% = 48U 价值 -> XMR 0.48e18
+            // root 超越 (等级低于 mid): 48 × 10% = 4.8U 价值 -> XMR 0.048e18
+            expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.48"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.048"));
         });
 
         it("5.6 Should not pay team reward to user with no level", async function () {
@@ -506,7 +512,8 @@ describe("Comprehensive StakingDApp Tests", function () {
                 await registerAndInvest(staking, signers[i], root.address, ethers.parseEther("2000"));
             }
             expect((await staking.getUserInfo(root.address)).level).to.be.gte(1);
-            for (let i = 0; i < 10; i++) {
+            // one max claim = 3000 x 1440% = 43200 > 3x limit (9000) -> exit immediately
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }
@@ -524,7 +531,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.1 Should exit via static income when reaching 3x", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            for (let i = 0; i < 10; i++) {
+            // one max claim = 100 x 1440% = 1440 -> capped at 3x (300) -> exit
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -547,13 +555,14 @@ describe("Comprehensive StakingDApp Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, ethers.parseEther("100"));
-            for (let i = 0; i < 6; i++) {
-                await advanceDays(30);
+            // 3 claims x 48% (advanceDays(1) = 48 periods) = 144 earned, remaining = 156
+            for (let i = 0; i < 3; i++) {
+                await advanceDays(1);
                 await staking.connect(root).claimStaticReward();
             }
             const afterClaim = await staking.getUserInfo(root.address);
             const remaining = afterClaim.exitLimit - afterClaim.totalEarned;
-            expect(remaining).to.equal(ethers.parseEther("120"));
+            expect(remaining).to.equal(ethers.parseEther("156"));
             await registerAndInvest(staking, child, root.address, ethers.parseEther("10000"));
             const final = await staking.getUserInfo(root.address);
             expect(final.totalEarned).to.equal(ethers.parseEther("300"));
@@ -563,7 +572,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.4 Should allow reinvestment after exit resetting totalEarned", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            for (let i = 0; i < 10; i++) {
+            // one max claim reaches the 3x exit limit
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -578,7 +588,8 @@ describe("Comprehensive StakingDApp Tests", function () {
         it("6.4b Should not claim immediately after reinvestment (lastClaimDay reset)", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, MIN100);
-            for (let i = 0; i < 10; i++) {
+            // one max claim reaches the 3x exit limit
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -1108,8 +1119,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
             const secondXMR = info.pendingXMR - firstXMR;
-            const firstExpected = ethers.parseEther("10") * E18 / ethers.parseEther("100");
-            const secondExpected = ethers.parseEther("10") * E18 / ethers.parseEther("200");
+            const firstExpected = ethers.parseEther("480") * E18 / ethers.parseEther("100");
+            const secondExpected = ethers.parseEther("480") * E18 / ethers.parseEther("200");
             expect(firstXMR).to.equal(firstExpected);
             expect(secondXMR).to.equal(secondExpected);
         });
@@ -1143,7 +1154,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("1"));
+            // 100 x 48 periods x 1% = 48 USDT
+            expect(info.totalEarned).to.equal(ethers.parseEther("48"));
         });
 
         it("14.6 Should reject investment just below minimum (99U)", async function () {
@@ -1158,8 +1170,9 @@ describe("Comprehensive StakingDApp Tests", function () {
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("1000"));
             await advanceDays(3);
             const [usdtVal, xmrVal] = await staking.estimateStaticReward(u.address);
-            expect(usdtVal).to.equal(ethers.parseEther("30"));
-            const expectedXMR = ethers.parseEther("30") * E18 / ethers.parseEther("100");
+            // advanceDays(3) = 144 periods x 1% = 144% => 1440 USDT
+            expect(usdtVal).to.equal(ethers.parseEther("1440"));
+            const expectedXMR = ethers.parseEther("1440") * E18 / ethers.parseEther("100");
             expect(xmrVal).to.equal(expectedXMR);
         });
 
@@ -1178,8 +1191,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await advanceDays(1);
             await staking.connect(u).claimStaticReward();
             const remaining = await staking.getRemainingExitLimit(u.address);
-            // 100 * 1% = 1 USDT earned, remaining = 300 - 1 = 299
-            expect(remaining).to.equal(ethers.parseEther("299"));
+            // 100 * 48% = 48 USDT earned, remaining = 300 - 48 = 252
+            expect(remaining).to.equal(ethers.parseEther("252"));
         });
 
         it("14.10 Should handle flash exchange then USDT withdrawal", async function () {
@@ -1283,7 +1296,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             }
 
             const info = await staking.getUserInfo(u.address);
-            expect(info.totalEarned).to.equal(ethers.parseEther("30"));
+            // 3 cycles x 48% = 144% => 1440 USDT (below 3x limit 3000)
+            expect(info.totalEarned).to.equal(ethers.parseEther("1440"));
             expect(info.pendingXMR).to.be.gt(0);
         });
 
@@ -1295,7 +1309,8 @@ describe("Comprehensive StakingDApp Tests", function () {
             await registerAndInvest(staking, root, ZERO, MIN100);
             await registerAndInvest(staking, mid, root.address, MIN100);
 
-            for (let i = 0; i < 10; i++) {
+            // one max claim reaches the 3x exit limit
+            for (let i = 0; i < 1; i++) {
                 await advanceDays(30);
                 await staking.connect(root).claimStaticReward();
             }

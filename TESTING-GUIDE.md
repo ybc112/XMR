@@ -32,7 +32,7 @@
 
 测试 U 需要在 BscScan 测试网上操作（这是测试流程里唯一的浏览器操作之一，多签的备选操作见流程 8）：
 
-1. 打开测试 U 合约页面：https://testnet.bscscan.com/address/0x4c549bB4EB1d4BE475d00654999c86210E642Ca1
+1. 打开测试 U 合约页面：https://testnet.bscscan.com/address/0x34cc8041D223571313DCc99d93Ff40EF10658e04
 2. 点页面右侧 **Connect to Web3**（连接钱包），MetaMask 选择要领取的钱包并确认
 3. 切到 **Contract（合约）** 标签 → 点 **Write Contract（写入合约）** 子页签
 4. 找到 **mint** 函数，**需要填两个参数**（漏填会报「合约错误，无法预估 gas」）：
@@ -213,10 +213,10 @@
 
 **备选方式：在区块链浏览器操作多签**（当页面多签区不便操作时，二选一即可，效果完全一样）
 
-1. 打开多签合约页面：https://testnet.bscscan.com/address/0x70eaD5d13A8E410f69Fb7A8a452C84899d1C1A87
+1. 打开多签合约页面：https://testnet.bscscan.com/address/0x69bFe45AF23A64a7b9A577B2009f8a8C4f7431eC
 2. 点 **Connect to Web3** 连接 **owner1** 钱包 → **Contract** → **Write Contract**
 3. **提交**：找到 `submitTransaction`，三项填好后点 **Write** 确认：
-   - 目的地（destination）：主合约地址 `0xFa2419F2A1BBe90Eb08E7D19cd3171CEF3ab75EB`
+   - 目的地（destination）：主合约地址 `0xBadC64Bb4d773e1C01316ee3d947663fC6Ffe3C0`
    - 值（value）：`0`
    - 数据（data）：粘贴技术同事提供的交易数据
 4. **确认**：切换 **owner2** 钱包连接 → 找到 `confirmTransaction`，编号（_txId）填多签列表里那笔交易的编号 → Write 确认
@@ -259,7 +259,7 @@
 
 | 数据 | 值 |
 |---|---|
-| 合约（测试网 v3.1） | StakingDApp `0xFa2419F2A1BBe90Eb08E7D19cd3171CEF3ab75EB` ｜ XMRToken `0x2B8181B02D5bec9449440Eef88265C15bC4392e7` ｜ MultiSig `0x70eaD5d13A8E410f69Fb7A8a452C84899d1C1A87` ｜ MockUSDT `0x4c549bB4EB1d4BE475d00654999c86210E642Ca1` |
+| 合约（测试网 v3.1） | StakingDApp `0xBadC64Bb4d773e1C01316ee3d947663fC6Ffe3C0` ｜ XMRToken `0xee6584aD5AdCA6Cdd189d242DC1e6d922403dFBc` ｜ MultiSig `0x69bFe45AF23A64a7b9A577B2009f8a8C4f7431eC` ｜ MockUSDT `0x34cc8041D223571313DCc99d93Ff40EF10658e04` |
 | 投资规则 | ≥100 U 且为 100 的整数倍 |
 | 周期收益率 | 1%（测试阶段每 30 分钟结算一次，每个周期 = 1800 秒） |
 | 出局上限 | 3 倍本金 |

@@ -506,11 +506,14 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     /// 团队奖（按伞下账户静态收益基数，领取静态收益时分配，奖励以 XMR 记账）
     /// _baseValue 为该用户本次静态收益的 USDT 价值；上级按级差/平级/超越规则
     /// 抽取 _baseValue 的百分比，折算成 XMR 记入 pendingXMR
+    /// 规则：
+    ///   - 按推荐链向上遍历，维护已出现的最高级别 maxLevel 及对应费率 maxRate；
+    ///   - 若当前上级级别 > maxLevel：拿级差 = _baseValue * (当前费率 - maxRate) / 10000；
+    ///   - 若当前上级级别 <= maxLevel（平级或超越）：拿平级/超越奖 = _baseValue * 10% / 10000。
     function _distributeTeamRewards(address _user, uint256 _baseValue) internal {
         address current = users[_user].referrer;
-        uint256 prevLevel = 0;
-        uint256 prevRate = 0;
-        uint256 prevReward = 0;
+        uint256 maxLevel = 0;
+        uint256 maxRate = 0;
         uint256 depth = 0;
 
         while (current != address(0) && depth < MAX_TEAM_DEPTH) {
@@ -520,12 +523,14 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                 uint256 currentRate = levels[ancestor.level - 1].teamRate;
                 uint256 teamReward = 0;
 
-                if (ancestor.level > prevLevel) {
-                    teamReward = _baseValue * (currentRate - prevRate) / 10000;
-                } else if (ancestor.level == prevLevel) {
-                    teamReward = prevReward * 1000 / 10000;
+                if (ancestor.level > maxLevel) {
+                    // 级差：按与当前最高级别的费率差计算
+                    teamReward = _baseValue * (currentRate - maxRate) / 10000;
+                    maxLevel = ancestor.level;
+                    maxRate = currentRate;
                 } else {
-                    teamReward = prevReward * 1000 / 10000;
+                    // 平级或超越：拿产生该笔静态收益用户静态收益的 10%
+                    teamReward = _baseValue * 1000 / 10000;
                 }
 
                 teamReward = _applyExitLimit(current, teamReward);
@@ -545,14 +550,10 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                         emit Exited(current, ancestor.totalEarned);
                     }
                 }
-
-                prevLevel = ancestor.level;
-                prevRate = currentRate;
-                prevReward = teamReward;
-            } else {
-                prevLevel = ancestor.level;
-                prevRate = ancestor.level > 0 ? levels[ancestor.level - 1].teamRate : 0;
-                prevReward = 0;
+            } else if (ancestor.level > maxLevel) {
+                // 无资格拿奖但仍是高级别占位，更新 maxLevel/maxRate 避免下级重复拨出
+                maxLevel = ancestor.level;
+                maxRate = levels[ancestor.level - 1].teamRate;
             }
 
             current = ancestor.referrer;

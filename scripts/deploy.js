@@ -39,11 +39,15 @@ async function main() {
     console.log("   Owners:", multiSigOwners);
     console.log("   Required confirmations:", multiSigRequired);
 
-    console.log("\n5. Transferring StakingDApp ownership to MultiSigWallet...");
+    console.log("\n5. Adding deployer as admin for automated settlement...");
+    await stakingDApp.addAdmin(deployer.address);
+    console.log("   Admin added:", deployer.address);
+
+    console.log("\n6. Transferring StakingDApp ownership to MultiSigWallet...");
     await stakingDApp.transferOwnership(multiSigAddr);
     console.log("   Ownership transferred to:", multiSigAddr);
 
-    console.log("\n6. Transferring XMRToken ownership to MultiSigWallet...");
+    console.log("\n7. Transferring XMRToken ownership to MultiSigWallet...");
     await xmrToken.transferOwnership(multiSigAddr);
     console.log("   XMRToken ownership transferred to:", multiSigAddr);
 

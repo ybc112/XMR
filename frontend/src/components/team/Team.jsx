@@ -428,6 +428,35 @@ export default function Team() {
       </div>
 
       <div className="team-grid">
+        <Card title="团队奖励规则" subtitle="团队奖按伞下所有账户的静态收益结算">
+          <div className="reward-rule-list">
+            <div className="reward-rule-item">
+              <span className="reward-rule-dot" style={{ background: '#B8860B' }}></span>
+              <span className="reward-rule-text">
+                <strong>级差奖励：</strong>按网体中最高级别对应的费率差计算，例如 M2（10%）下属 M1（5%）时，M2 拿差额 5%。
+              </span>
+            </div>
+            <div className="reward-rule-item">
+              <span className="reward-rule-dot" style={{ background: '#3B82F6' }}></span>
+              <span className="reward-rule-text">
+                <strong>平级奖励：</strong>伞下出现同级账户时，上级拿该账户静态收益的 10%。
+              </span>
+            </div>
+            <div className="reward-rule-item">
+              <span className="reward-rule-dot" style={{ background: '#EF4444' }}></span>
+              <span className="reward-rule-text">
+                <strong>超越奖励：</strong>伞下出现更高级别账户时，上级仍拿该账户静态收益的 10%。
+              </span>
+            </div>
+            <div className="reward-rule-item">
+              <span className="reward-rule-dot" style={{ background: '#10B981' }}></span>
+              <span className="reward-rule-text">
+                <strong>全网结算：</strong>团队奖覆盖整个伞体（大区 + 小区），每日自动结算到账。
+              </span>
+            </div>
+          </div>
+        </Card>
+
         <Card title="等级体系" subtitle="M1-M9 等级要求及团队奖励比例">
           <div className="table-wrapper">
             <table className="data-table">

@@ -1,10 +1,10 @@
 // 合约地址配置 (BSC 测试网, chainId 97)
-// 2026-08-17 测试网重新部署（每周期1%收益 + 自动结算admin）
+// 2026-08-18 测试网重新部署（团队奖级差/平级/超越逻辑修正版）
 // 部署记录: deploy-state-testnet.json
 export const CONTRACT_ADDRESSES = {
-  StakingDApp: '0xBadC64Bb4d773e1C01316ee3d947663fC6Ffe3C0',
-  XMRToken: '0xee6584aD5AdCA6Cdd189d242DC1e6d922403dFBc',
-  MultiSigWallet: '0x69bFe45AF23A64a7b9A577B2009f8a8C4f7431eC',
+  StakingDApp: '0x6ec00465CD066bc7114Dcd7A2579b92B8Ccd3827',
+  XMRToken: '0x946cE3bA06B198c6c5C801f37538336D5F35a133',
+  MultiSigWallet: '0x52a93A49E695572e70Fdc132C1b7C392AA1d1Ce1',
   USDT: '0x34cc8041D223571313DCc99d93Ff40EF10658e04' // MockUSDT（测试 U，公开 mint）
 }
 

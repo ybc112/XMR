@@ -411,7 +411,7 @@ describe("Comprehensive StakingDApp Tests", function () {
             expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.24"));
         });
 
-        it("5.4 Should pay equal level bonus (10% of subordinate team reward)", async function () {
+        it("5.4 Should pay equal level bonus (10% of static reward)", async function () {
             const root = signers[0];
             const mid = signers[1];
 
@@ -440,12 +440,12 @@ describe("Comprehensive StakingDApp Tests", function () {
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
             // mid (M1 5%): 480 × 5% = 24U 价值 -> XMR 0.24e18
-            // root 平级: 24 × 10% = 2.4U 价值 -> XMR 0.024e18
+            // root 平级: 480 × 10% = 48U 价值 -> XMR 0.48e18
             expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.24"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.024"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.48"));
         });
 
-        it("5.5 Should pay exceed bonus (10% when subordinate has higher level)", async function () {
+        it("5.5 Should pay exceed bonus (10% of static reward when subordinate has higher level)", async function () {
             const root = signers[0];
             const mid = signers[1];
 
@@ -474,9 +474,9 @@ describe("Comprehensive StakingDApp Tests", function () {
             const rootXmrAfter = (await staking.getUserInfo(root.address)).pendingXMR;
 
             // mid (M2 10%): 480 × 10% = 48U 价值 -> XMR 0.48e18
-            // root 超越 (等级低于 mid): 48 × 10% = 4.8U 价值 -> XMR 0.048e18
+            // root 超越 (等级低于 mid): 480 × 10% = 48U 价值 -> XMR 0.48e18
             expect(midXmrAfter - midXmrBefore).to.equal(ethers.parseEther("0.48"));
-            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.048"));
+            expect(rootXmrAfter - rootXmrBefore).to.equal(ethers.parseEther("0.48"));
         });
 
         it("5.6 Should not pay team reward to user with no level", async function () {

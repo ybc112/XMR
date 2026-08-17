@@ -1,6 +1,6 @@
 # XMR Staking DApp 测试网操作指南
 
-> 环境：BSC 测试网 ｜ 前端：https://xmr-beta.vercel.app/ ｜ 管理页：https://xmr-beta.vercel.app/admin
+> 环境：BSC 测试网 ｜ 前端：https://xmr-beta.vercel.app/ ｜ 管理页：https://xmr-beta.vercel.app/admin ｜ 后端服务器：47.239.66.133:3001
 
 ---
 

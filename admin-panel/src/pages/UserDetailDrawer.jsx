@@ -152,6 +152,13 @@ function TreeTab({ address, onSwitchUser }) {
       </div>
     );
   }
+  if (!treeData || !treeData.address) {
+    return (
+      <Typography.Text type="secondary">
+        暂无团队树数据
+      </Typography.Text>
+    );
+  }
   const rootNode = toNode(treeData);
   const hasChildren = (rootNode.children || []).length > 0;
 

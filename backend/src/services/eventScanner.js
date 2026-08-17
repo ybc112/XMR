@@ -94,18 +94,12 @@ function formatEventLog(eventLog) {
  * 查询失败直接抛出，由 performScan 捕获：不推进扫描进度，下轮重试。
  */
 async function scanBlockRange(fromBlock, toBlock) {
-  // 合并所有事件 topic，一次查询（topics 第一层为 OR）
-  const eventTopics = EVENTS_TO_SCAN.map((name) =>
-    stakingContract.interface.getEvent(name).topicHash
-  );
-
-  // 带重试的 getLogs（公共节点限流严重）
+  // 带重试的 getLogs（公共节点限流严重，不传 topics 减少请求复杂度）
   let rawLogs;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       rawLogs = await provider.getLogs({
         address: config.stakingContractAddress,
-        topics: [eventTopics],
         fromBlock,
         toBlock,
       });

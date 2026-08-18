@@ -21,7 +21,7 @@ function PageLoading() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename="/panel">
       <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/login" element={<Login />} />

@@ -1,6 +1,6 @@
 # XMR Staking DApp 测试网操作指南
 
-> 环境：BSC 测试网 ｜ 前端：https://xmr-beta.vercel.app/ ｜ 管理页：https://xmr-beta.vercel.app/admin ｜ 后端服务器：47.239.66.133:3001
+> 环境：BSC 测试网 ｜ 前端：https://xmr-beta.vercel.app/ ｜ 管理页（连钱包+多签）：https://xmr-beta.vercel.app/admin ｜ 运营后台（账号密码）：https://xmr-beta.vercel.app/panel ｜ 后端服务器：47.239.66.133:3001
 
 ---
 
@@ -194,7 +194,7 @@
 
 ### 流程 7.5：管理后台（管理页）—— 必测
 
-**入口**：浏览器打开 **https://xmr-beta.vercel.app/admin**（或站点内点导航栏「管理」）→ 连接钱包即可进入。
+**入口**：浏览器打开 **https://xmr-beta.vercel.app/admin**（连接钱包即可进入）。另有一个账密登录的**运营后台**在 https://xmr-beta.vercel.app/panel （数据查看/用户管理/资金流水，多签相关操作请用本页钱包直签）。
 
 **两种身份的行为**：
 

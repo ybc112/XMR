@@ -84,6 +84,17 @@ if (adminWallet) {
 // ======================== 业务方法 ========================
 
 /**
+ * 安全合约调用：合约未实现该函数（missing revert data）时返回 null
+ */
+async function safeCall(fn) {
+  try {
+    return (await fn()).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 获取合约全局统计
  */
 async function getContractStats() {
@@ -102,12 +113,8 @@ async function getContractStats() {
     computingPower: stats.computingPower.toString(),
     withdrawFee: stats.withdrawFee.toString(),
     paused: stats.paused,
-    lastSettlementPeriod: (
-      await stakingContract.lastSettlementPeriod()
-    ).toString(),
-    settlementInterval: (
-      await stakingContract.SETTLEMENT_INTERVAL()
-    ).toString(),
+    lastSettlementPeriod: await safeCall(() => stakingContract.lastSettlementPeriod()),
+    settlementInterval: await safeCall(() => stakingContract.SETTLEMENT_INTERVAL()),
     contractUSDTBalance: {
       raw: stats.contractUSDTBalance.toString(),
       formatted: ethers.formatEther(stats.contractUSDTBalance),

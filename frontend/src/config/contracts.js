@@ -1,32 +1,15 @@
-// 合约地址配置 (BSC 测试网, chainId 97)
-// 2026-08-18 测试网重新部署（团队奖 v5：直推奖+级差奖+平级/超越奖）
-// 部署记录: deploy-state-testnet.json
+// 合约地址配置 (BSC 主网, chainId 56)
+// 2026-08-18 主网正式部署（收益结算 24h 周期锚定北京12:00，日化率锁定1%）
+// 部署记录: deploy-state-mainnet.json
 export const CONTRACT_ADDRESSES = {
-  StakingDApp: '0x2a74f3dEA47640e5cBEbfCb69E61A82c628327B0',
-  XMRToken: '0xa55c207ce7ee1C379170b76B73f0517886716ad4',
-  MultiSigWallet: '0xeee8415C2F13FF7C39f51Ba0cf81794878F06Fb0',
-  USDT: '0x34cc8041D223571313DCc99d93Ff40EF10658e04' // MockUSDT（测试 U，公开 mint）
+  StakingDApp: '0xf5A3AA050958Ffb8B2bd2b65c12e3c05CF13F76F',
+  XMRToken: '0x6b4B901c5F41b843F91CAbF142738Af95690B2F8',
+  MultiSigWallet: '0xa7ba6546F1B43524413b2D938D2a3C0b2C37016f',
+  USDT: '0x55d398326f99059fF775485246999027B3197955' // BSC 官方 USDT
 }
 
-// 当前网络配置：BSC 测试网
+// 当前网络配置：BSC 主网
 export const NETWORK_CONFIG = {
-  chainId: '0x61', // 97 in hex
-  chainName: 'BNB Smart Chain Testnet',
-  nativeCurrency: {
-    name: 'tBNB',
-    symbol: 'tBNB',
-    decimals: 18
-  },
-  rpcUrls: [
-    'https://bsc-testnet.bnbchain.org',
-    'https://bsc-testnet.publicnode.com',
-    'https://data-seed-prebsc-1-s1.binance.org:8545'
-  ],
-  blockExplorerUrls: ['https://testnet.bscscan.com']
-}
-
-// 主网配置 (可选，切回生产时使用)
-export const MAINNET_CONFIG = {
   chainId: '0x38', // 56 in hex
   chainName: 'BNB Smart Chain',
   nativeCurrency: {
@@ -35,10 +18,10 @@ export const MAINNET_CONFIG = {
     decimals: 18
   },
   rpcUrls: [
-    'https://bsc-dataseed.binance.org',
-    'https://bsc-dataseed1.defibit.io',
-    'https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3',
-    'https://bnb-mainnet.g.alchemy.com/v2/demo'
+    'https://bsc-dataseed.bnbchain.org',
+    'https://bsc-dataseed1.bnbchain.org',
+    'https://bsc-dataseed2.bnbchain.org',
+    'https://bsc-dataseed3.bnbchain.org'
   ],
   blockExplorerUrls: ['https://bscscan.com']
 }
@@ -46,12 +29,11 @@ export const MAINNET_CONFIG = {
 // USDT 精度 (BSC上的USDT使用18位精度)
 export const USDT_DECIMALS = 18
 
-// 链上 explorer (当前测试网)
-export const BSC_EXPLORER = 'https://testnet.bscscan.com'
+// 链上 explorer (当前主网)
+export const BSC_EXPLORER = 'https://bscscan.com'
 
 // 后端 API 地址（资金明细等只读数据走后端缓存）
-// 生产（Vercel HTTPS）默认用相对路径，由 vercel.json 将 /api/* 服务端转发到后端，
-// 避免浏览器混合内容拦截（HTTPS 页面禁止请求 HTTP 接口）
+// 生产（HTTPS）默认用相对路径，由 nginx 将 /api/* 转发到后端，避免混合内容拦截
 // 可用 VITE_API_BASE_URL 覆盖（如 https://api.example.com）
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||

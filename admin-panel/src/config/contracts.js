@@ -1,14 +1,14 @@
 import { ethers } from 'ethers';
 
-export const STAKING_ADDRESS = '0x2a74f3dEA47640e5cBEbfCb69E61A82c628327B0';
-export const MULTISIG_ADDRESS = '0xeee8415C2F13FF7C39f51Ba0cf81794878F06Fb0';
+export const STAKING_ADDRESS = '0xf5A3AA050958Ffb8B2bd2b65c12e3c05CF13F76F';
+export const MULTISIG_ADDRESS = '0xa7ba6546F1B43524413b2D938D2a3C0b2C37016f';
 
-export const BSC_TESTNET = {
-  chainId: '0x61',
-  chainName: 'BSC Testnet',
-  nativeCurrency: { name: 'tBNB', symbol: 'tBNB', decimals: 18 },
-  rpcUrls: ['https://bsc-testnet.publicnode.com'],
-  blockExplorerUrls: ['https://testnet.bscscan.com'],
+export const BSC_MAINNET = {
+  chainId: '0x38',
+  chainName: 'BSC Mainnet',
+  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+  rpcUrls: ['https://bsc-dataseed.bnbchain.org'],
+  blockExplorerUrls: ['https://bscscan.com'],
 };
 
 export const STAKING_ABI = [

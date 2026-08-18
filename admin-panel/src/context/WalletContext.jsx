@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
 import {
-  BSC_TESTNET,
+  BSC_MAINNET,
   STAKING_ABI,
   STAKING_ADDRESS,
   MULTISIG_ABI,
@@ -37,24 +37,24 @@ export function PanelWalletProvider({ children }) {
 
   const ensureChain = useCallback(async () => {
     const cid = await window.ethereum.request({ method: 'eth_chainId' });
-    if (cid === BSC_TESTNET.chainId) return true;
+    if (cid === BSC_MAINNET.chainId) return true;
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: BSC_TESTNET.chainId }],
+        params: [{ chainId: BSC_MAINNET.chainId }],
       });
     } catch (err) {
       if (err.code === 4902) {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
-          params: [BSC_TESTNET],
+          params: [BSC_MAINNET],
         });
       } else {
         throw err;
       }
     }
     const newCid = await window.ethereum.request({ method: 'eth_chainId' });
-    return newCid === BSC_TESTNET.chainId;
+    return newCid === BSC_MAINNET.chainId;
   }, []);
 
   const connect = useCallback(async () => {
@@ -86,8 +86,8 @@ export function PanelWalletProvider({ children }) {
       }
     };
     const onChain = (cid) => {
-      setChainOk(cid === BSC_TESTNET.chainId);
-      if (cid === BSC_TESTNET.chainId) checkIdentity(account);
+      setChainOk(cid === BSC_MAINNET.chainId);
+      if (cid === BSC_MAINNET.chainId) checkIdentity(account);
     };
     window.ethereum.on?.('accountsChanged', onAccounts);
     window.ethereum.on?.('chainChanged', onChain);
@@ -96,7 +96,7 @@ export function PanelWalletProvider({ children }) {
     (async () => {
       try {
         const cid = await window.ethereum.request({ method: 'eth_chainId' });
-        setChainOk(cid === BSC_TESTNET.chainId);
+        setChainOk(cid === BSC_MAINNET.chainId);
         const accs = await window.ethereum.request({ method: 'eth_accounts' });
         const addr = accs && accs[0];
         if (addr) {

@@ -9,12 +9,12 @@ import { useContracts } from '../../hooks/useContracts.js'
 import { useMultiSig } from '../../hooks/useMultiSig.js'
 import { useToast } from '../common/Toast.jsx'
 import { formatNumber, formatAddress, formatDailyRate } from '../../utils/format.js'
-import { CONTRACT_ADDRESSES } from '../../config/contracts.js'
+import { CONTRACT_ADDRESSES, NETWORK_CONFIG } from '../../config/contracts.js'
 import { STAKING_DAPP_ABI } from '../../config/abis.js'
 import { ethers } from 'ethers'
 
 export default function Admin() {
-  const { account, isConnected, connectWallet, isAdmin } = useWeb3()
+  const { account, isConnected, connectWallet, isAdmin, chainId } = useWeb3()
   const {
     getUserInfo,
     getContractStats,
@@ -157,9 +157,38 @@ export default function Admin() {
     fetchPending()
   }, [withdrawalUser, getUserInfo])
 
+  const isWrongNetwork = chainId && chainId !== NETWORK_CONFIG.chainId
+
   const handleAction = async (actionName, actionFn, ...args) => {
+    if (isWrongNetwork) {
+      showError('当前网络不是 BSC 测试网，请先切换网络')
+      return
+    }
     if (!isAdmin) {
       showError('当前钱包不是管理员，无法执行该操作（仅可查看）')
+      return
+    }
+    setActionLoading(true)
+    try {
+      showInfo(`正在执行: ${actionName}`)
+      await actionFn(...args)
+      showSuccess(`${actionName}成功`)
+      await loadData()
+    } catch (err) {
+      console.error(`${actionName}失败:`, err)
+      showError(err.reason || err.message || `${actionName}失败`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleMultisigAction = async (actionName, actionFn, ...args) => {
+    if (isWrongNetwork) {
+      showError('当前网络不是 BSC 测试网，请先切换网络')
+      return
+    }
+    if (!isCurrentOwner) {
+      showError('当前钱包不是多签 owner，无法执行该操作')
       return
     }
     setActionLoading(true)
@@ -222,6 +251,14 @@ export default function Admin() {
   }
 
   const handleSubmitMultisig = () => {
+    if (isWrongNetwork) {
+      showError('当前网络不是 BSC 测试网，请先切换网络')
+      return
+    }
+    if (!isCurrentOwner) {
+      showError('当前钱包不是多签 owner，无法提交多签交易')
+      return
+    }
     const value = ethers.parseEther(multisigValue || '0')
     const data = multisigData.trim() || '0x'
 
@@ -235,7 +272,7 @@ export default function Admin() {
       return
     }
 
-    handleAction('提交多签交易', submitTransaction, multisigDestination, value, data)
+    handleMultisigAction('提交多签交易', submitTransaction, multisigDestination, value, data)
   }
 
   const decodeTxData = (tx) => {
@@ -315,14 +352,21 @@ export default function Admin() {
 
   return (
     <div className="page-container">
-      {!isAdmin && (
+      {isWrongNetwork ? (
+        <div className="admin-readonly-banner" style={{ borderColor: '#ef4444', background: 'rgba(239,68,68,0.08)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: '#ef4444' }}>
+            <path d="M12 9V14M12 17H12.01M10.3 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.7 3.86A2 2 0 0010.3 3.86Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span style={{ color: '#ef4444' }}>当前网络不是 BSC 测试网（chainId: {chainId || '未知'}），请在钱包中切换到 BSC 测试网后刷新页面</span>
+        </div>
+      ) : !isAdmin && !isCurrentOwner ? (
         <div className="admin-readonly-banner">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
             <path d="M12 9V14M12 17H12.01M10.3 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.7 3.86A2 2 0 0010.3 3.86Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span>当前钱包不是管理员：仅可查看数据，执行操作需使用管理员钱包（多签 owner 或已添加为 admin 的钱包）</span>
         </div>
-      )}
+      ) : null}
       <div className="page-header">
         <div>
           <h1 className="page-title">管理后台</h1>
@@ -817,7 +861,7 @@ export default function Admin() {
                             <Button
                               variant="primary"
                               size="small"
-                              onClick={() => handleAction('确认交易', confirmTransaction, tx.id)}
+                              onClick={() => handleMultisigAction('确认交易', confirmTransaction, tx.id)}
                               loading={actionLoading}
                               disabled={myConfirmed}
                               title={myConfirmed ? '您已签名' : ''}
@@ -827,7 +871,7 @@ export default function Admin() {
                             <Button
                               variant="outline"
                               size="small"
-                              onClick={() => handleAction('撤销确认', revokeConfirmation, tx.id)}
+                              onClick={() => handleMultisigAction('撤销确认', revokeConfirmation, tx.id)}
                               loading={actionLoading}
                               disabled={!myConfirmed}
                             >
@@ -836,7 +880,7 @@ export default function Admin() {
                             <Button
                               variant="success"
                               size="small"
-                              onClick={() => handleAction('执行交易', executeTransaction, tx.id)}
+                              onClick={() => handleMultisigAction('执行交易', executeTransaction, tx.id)}
                               loading={actionLoading}
                               disabled={!canExecute || !myConfirmed}
                             >

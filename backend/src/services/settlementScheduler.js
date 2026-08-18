@@ -11,37 +11,61 @@ const blockchain = require("./blockchain");
 let timer = null;
 let running = false;
 
-const DEFAULT_PRICE_URL =
-  "https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=usd";
+// Binance 主源（免费稳定，无需 key）；CoinGecko 兜底
+const PRICE_SOURCES = [
+  {
+    name: "binance",
+    url: "https://api.binance.com/api/v3/ticker/price?symbol=XMRUSDT",
+    parse: (body) => Number(body && body.price),
+  },
+  {
+    name: "coingecko",
+    url: "https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=usd",
+    parse: (body) => Number(body && body.monero && body.monero.usd),
+  },
+];
 
 /**
- * 获取实时 XMR/USD 价格；失败返回 null
+ * 获取实时 XMR/USD 价格；多个源依次尝试，全部失败返回 null
  */
 async function fetchXmrUsdPrice() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(config.settlementPriceUrl || DEFAULT_PRICE_URL, {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    });
-    if (!res.ok) {
-      logger.warn(`XMR 价格接口返回 ${res.status}`);
-      return null;
+  const sources =
+    config.settlementPriceUrl && config.settlementPriceUrl.trim()
+      ? [
+          {
+            name: "custom",
+            url: config.settlementPriceUrl,
+            parse: (body) => Number(body && body.monero && body.monero.usd),
+          },
+          ...PRICE_SOURCES,
+        ]
+      : PRICE_SOURCES;
+
+  for (const src of sources) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const res = await fetch(src.url, {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) {
+        logger.warn(`XMR 价格源 ${src.name} 返回 ${res.status}`);
+        continue;
+      }
+      const body = await res.json();
+      const price = src.parse(body);
+      if (Number.isFinite(price) && price > 0) {
+        return price;
+      }
+      logger.warn(`XMR 价格源 ${src.name} 返回无效数据:`, JSON.stringify(body));
+    } catch (err) {
+      logger.warn(`XMR 价格源 ${src.name} 获取失败: ${err.message}`);
+    } finally {
+      clearTimeout(timeout);
     }
-    const body = await res.json();
-    const price = Number(body && body.monero && body.monero.usd);
-    if (!Number.isFinite(price) || price <= 0) {
-      logger.warn("XMR 价格接口返回无效数据:", JSON.stringify(body));
-      return null;
-    }
-    return price;
-  } catch (err) {
-    logger.warn(`获取 XMR 实时价格失败: ${err.message}`);
-    return null;
-  } finally {
-    clearTimeout(timeout);
   }
+  return null;
 }
 
 /**

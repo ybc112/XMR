@@ -91,20 +91,20 @@ export default function Dashboard() {
   const pendingColumns = [
     {
       title: '用户地址',
-      dataIndex: ['args', 'user'],
+      dataIndex: 'user',
       width: 170,
       render: (v) => <CopyableText text={v} />,
     },
     {
       title: 'XMR 金额',
-      dataIndex: ['args', 'amount'],
+      dataIndex: 'amount',
       align: 'right',
       width: 130,
       render: (v) => <Money value={v} />,
     },
     {
       title: 'XMR 收款地址',
-      dataIndex: ['args', 'xmrAddr'],
+      dataIndex: 'xmrAddress',
       ellipsis: true,
       render: (v) => <CopyableText text={v} head={18} tail={10} withTooltip />,
     },
@@ -121,11 +121,11 @@ export default function Dashboard() {
         <Popconfirm
           title="确认已线下打款？"
           description="将触发链上 XMR 提现到账处理"
-          onConfirm={() => onProcess(r.args && r.args.user)}
+          onConfirm={() => onProcess(r.user)}
           okText="已打款，处理"
           cancelText="取消"
         >
-          <Typography.Link loading={processing === (r.args && r.args.user)}>已打款-处理</Typography.Link>
+          <Typography.Link loading={processing === r.user}>已打款-处理</Typography.Link>
         </Popconfirm>
       ),
     },
@@ -218,7 +218,7 @@ export default function Dashboard() {
         extra={<Typography.Link onClick={load}>刷新</Typography.Link>}
       >
         <Table
-          rowKey={(r) => `${r.txHash || ''}-${r.args && r.args.user}`}
+          rowKey={(r) => `${r.txHash || ''}-${r.user || ''}`}
           columns={pendingColumns}
           dataSource={pendingList}
           loading={loading}

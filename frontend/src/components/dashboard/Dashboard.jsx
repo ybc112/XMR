@@ -5,7 +5,7 @@ import Button from '../common/Button.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatEther, formatNumber, formatAddress, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
+import { formatEther, formatNumber, formatAddress, getLevelName, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
 
 export default function Dashboard() {
   const { account, isConnected, connectWallet, isAdmin } = useWeb3()

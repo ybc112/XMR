@@ -51,6 +51,12 @@ export function Web3Provider({ children }) {
   const checkAdminStatus = useCallback(async (userAccount, userProvider) => {
     if (!userAccount) return
     try {
+      // 未连接到目标网络时合约地址无代码，跨链调用必然失败，直接跳过（切链后会 reload 重新检查）
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      if (currentChainId !== NETWORK_CONFIG.chainId) {
+        setIsAdmin(false)
+        return
+      }
       const stakingContract = new ethers.Contract(
         CONTRACT_ADDRESSES.StakingDApp,
         STAKING_DAPP_ABI,

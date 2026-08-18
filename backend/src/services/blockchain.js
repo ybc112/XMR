@@ -16,7 +16,32 @@ const logger = require("../utils/logger");
 const provider = new ethers.JsonRpcProvider(config.bscRpcUrl, {
   chainId: config.chainId,
   name: config.chainId === 97 ? "bsc-testnet" : "bsc",
+}, {
+  staticNetwork: true,
 });
+
+// 带超时的合约调用辅助函数
+async function withTimeout(promise, ms = 10000, label = "contract call") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+async function retryCall(fn, retries = 2, delay = 500) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await withTimeout(fn(), 10000, "rpc");
+    } catch (err) {
+      lastErr = err;
+      if (i < retries) await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
 
 // 创建管理员 Wallet（签名），如果私钥配置了的话
 let adminWallet = null;
@@ -81,6 +106,29 @@ if (adminWallet) {
   multisigContractWithSigner = multisigContract.connect(adminWallet);
 }
 
+// 启动时检查管理员钱包身份（owner / multisig owner / admin）
+(async function checkAdminIdentity() {
+  if (!adminWallet) return;
+  try {
+    const [owner, isMsOwner, isAdmin] = await Promise.all([
+      stakingContract.owner().catch(() => null),
+      multisigContract.isOwner(adminWallet.address).catch(() => false),
+      stakingContract.admins(adminWallet.address).catch(() => false),
+    ]);
+    const isContractOwner = owner && owner.toLowerCase() === adminWallet.address.toLowerCase();
+    logger.info(
+      `管理员身份检查: address=${adminWallet.address}, owner=${isContractOwner}, multisigOwner=${isMsOwner}, admin=${isAdmin}`
+    );
+    if (!isContractOwner && !isMsOwner && !isAdmin) {
+      logger.warn(
+        "当前 ADMIN_PRIVATE_KEY 对应钱包既不是合约 owner，也不是多签 owner，也不是 staking admin"
+      );
+    }
+  } catch (err) {
+    logger.error("管理员身份检查失败:", err.message);
+  }
+})();
+
 // ======================== 业务方法 ========================
 
 /**
@@ -130,7 +178,7 @@ async function getContractStats() {
  * 获取用户信息
  */
 async function getUserInfo(address) {
-  const info = await stakingContract.getUserInfo(address);
+  const info = await retryCall(() => stakingContract.getUserInfo(address));
   return {
     address: ethers.getAddress(address),
     referrer: info.referrer,
@@ -179,8 +227,8 @@ async function getUserInfo(address) {
  */
 async function getDirectReferrals(address) {
   const [referrals, count] = await Promise.all([
-    stakingContract.getDirectReferrals(address),
-    stakingContract.getDirectReferralCount(address),
+    retryCall(() => stakingContract.getDirectReferrals(address)),
+    retryCall(() => stakingContract.getDirectReferralCount(address)),
   ]);
   return {
     count: count.toString(),

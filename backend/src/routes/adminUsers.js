@@ -121,21 +121,28 @@ async function getPendingXMRWithdrawalList() {
     })
     .sort((a, b) => b.blockNumber - a.blockNumber);
 
-  // 附带链上最新 XMR 收款地址（供人工打款）
+  // 附带链上最新 XMR 收款地址（供人工打款），并校验真实 pending 金额
   const items = await mapInBatches(pending, 20, async (r) => {
     const user = r.args.user;
     let xmrAddress = r.args.xmrAddr || "";
+    let onChainPending = "0";
     try {
+      const info = await blockchain.stakingContract.getUserInfo(user);
+      onChainPending = info && info.xmrWithdrawalPending
+        ? info.xmrWithdrawalPending.toString()
+        : "0";
       const latest = await blockchain.stakingContract.xmrAddress(user);
       if (latest) xmrAddress = latest;
     } catch {
       /* 读取失败时退回事件里的地址 */
     }
+    // 出局/复投等场景会把 xmrWithdrawalPending 清零，此时不是真实待处理
+    if (BigInt(onChainPending || "0") <= 0n) return null;
     return {
       user,
       amount: {
-        raw: r.args.amount || "0",
-        formatted: ethers.formatEther(r.args.amount || 0),
+        raw: onChainPending,
+        formatted: ethers.formatEther(onChainPending),
       },
       xmrAddress,
       timestamp: r.timestamp,
@@ -172,6 +179,14 @@ async function execOwnerOp(fnName, ...args) {
   // 提交多签交易
   if (!blockchain.multisigContractWithSigner) {
     throw new Error("管理员钱包未配置，无法发送交易");
+  }
+  const isMsOwner = await blockchain.multisigContract
+    .isOwner(signerAddress)
+    .catch(() => false);
+  if (!isMsOwner) {
+    throw new Error(
+      `后端钱包 ${signerAddress} 不是多签 owner，无法提交多签交易。请将 ADMIN_PRIVATE_KEY 改为多签 owner 之一，或把该钱包加为多签 owner`
+    );
   }
 
   const calldata = blockchain.stakingContract.interface.encodeFunctionData(
@@ -507,7 +522,7 @@ router.get(
 
     const { count, referrals } = await blockchain.getDirectReferrals(addr);
 
-    const items = await mapInBatches(referrals, 20, async (r) => {
+    const items = await mapInBatches(referrals, 5, async (r) => {
       const info = await blockchain.getUserInfo(r).catch(() => null);
       return {
         address: r,
@@ -739,4 +754,4 @@ router.get(
   })
 );
 
-module.exports = router;
+module.exports = { router, getPendingXMRWithdrawalList };

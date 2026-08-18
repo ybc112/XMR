@@ -160,10 +160,15 @@ export default function Admin() {
       const items = await Promise.all(
         pending.map(async (r) => {
           let xmrAddress = r.args?.xmrAddr || ''
+          let onChainPending = 0n
           try {
+            const info = await contract.getUserInfo(r.args.user)
+            onChainPending = info ? info.xmrWithdrawalPending || 0n : 0n
             const latest = await contract.xmrAddress(r.args.user)
             if (latest) xmrAddress = latest
           } catch { /* 读取失败时保留事件内地址 */ }
+          // 链上 pending 已被清零（如出局、复投等）则不是真实待处理
+          if (onChainPending <= 0n) return null
           let time = null
           try {
             const block = await readOnly.getBlock(r.blockNumber)
@@ -172,13 +177,14 @@ export default function Admin() {
           return {
             user: r.args.user,
             amount: r.args.amount,
+            onChainPending,
             xmrAddress,
             time,
             txHash: r.transactionHash
           }
         })
       )
-      setPendingXmrList(items)
+      setPendingXmrList(items.filter(Boolean))
     } catch (err) {
       console.error('加载待处理XMR提现失败:', err)
       setPendingXmrList([])

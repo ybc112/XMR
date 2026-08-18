@@ -54,7 +54,14 @@ function ReferralsTab({ address, onSwitchUser }) {
         setRows((res && res.items) || []);
         setTotal((res && res.total) || 0);
       })
-      .catch((e) => message.error(e.message))
+      .catch((e) => {
+        const m = String(e.message || '');
+        if (/timeout|ETIMEDOUT|NETWORK_ERROR/i.test(m)) {
+          message.error('直推列表加载超时，请检查网络或稍后重试');
+        } else {
+          message.error(e.message);
+        }
+      })
       .finally(() => setLoading(false));
   }, [address, page, limit, message]);
 
@@ -293,6 +300,23 @@ function ActionsTab({ address, detail, onRefresh }) {
   const [balanceForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
+  const friendlyActionError = (msg) => {
+    const m = String(msg || '');
+    if (/不是多签 owner|owner not exists/i.test(m)) {
+      return '后端钱包不是多签 owner，无法提交多签。请去主站 /admin 用多签 owner 钱包执行该操作，或把后端钱包加为多签 owner。';
+    }
+    if (/管理员钱包未配置/i.test(m)) {
+      return '后端未配置管理员钱包，无法执行链上操作。';
+    }
+    if (/only ?owner|only ?admin/i.test(m)) {
+      return '当前操作需要合约 owner 权限，请到主站 /admin 通过多签执行。';
+    }
+    if (/insufficient funds|gas required|underpriced/i.test(m)) {
+      return '后端钱包 gas 不足，请充值 tBNB。';
+    }
+    return m;
+  };
+
   const runOp = async (fn, successMsg) => {
     setSubmitting(true);
     try {
@@ -308,7 +332,7 @@ function ActionsTab({ address, detail, onRefresh }) {
       onRefresh && onRefresh();
       return true;
     } catch (e) {
-      message.error(e.message);
+      message.error(friendlyActionError(e.message));
       return false;
     } finally {
       setSubmitting(false);

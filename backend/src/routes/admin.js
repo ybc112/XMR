@@ -14,6 +14,7 @@ const {
   errorResponse,
 } = require("../middleware/errorHandler");
 const { parsePagination, buildPagination } = require("../utils/formatter");
+const { getPendingXMRWithdrawalList } = require("./adminUsers");
 
 // 所有管理路由都需要管理员认证
 router.use(adminAuth);
@@ -255,28 +256,12 @@ router.get(
   "/pending-xmr-withdrawals",
   asyncHandler(async (req, res) => {
     const { page, limit } = parsePagination(req.query);
-    const result = cache.getPendingXMRWithdrawals(page, limit);
+    const all = await getPendingXMRWithdrawalList();
+    const total = all.length;
+    const skip = (page - 1) * limit;
+    const items = all.slice(skip, skip + limit);
 
-    // 附带每个用户链上最新的 XMR 收款地址（供人工打款）
-    const items = await Promise.all(
-      result.items.map(async (e) => {
-        const user = e.args?.user;
-        let xmrAddr = e.args?.xmrAddr || "";
-        if (user) {
-          try {
-            const latest = await blockchain.stakingContract.xmrAddress(user);
-            if (latest) xmrAddr = latest;
-          } catch {
-            /* 读取失败时退回事件里的地址 */
-          }
-        }
-        return { ...e, xmrAddress: xmrAddr };
-      })
-    );
-
-    res.json(
-      successResponse(buildPagination(items, result.total, page, limit))
-    );
+    res.json(successResponse(buildPagination(items, total, page, limit)));
   })
 );
 

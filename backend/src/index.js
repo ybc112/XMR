@@ -85,7 +85,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/admin", adminUsersRoutes);
+app.use("/api/admin", adminUsersRoutes.router);
 app.use("/api/multisig", multisigRoutes);
 app.use("/api/levels", levelsRoutes);
 

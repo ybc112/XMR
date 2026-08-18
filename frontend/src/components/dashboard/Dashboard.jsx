@@ -5,7 +5,7 @@ import Button from '../common/Button.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
-import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
+import { formatEther, formatNumber, formatAddress, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
 
 export default function Dashboard() {
   const { account, isConnected, connectWallet, isAdmin } = useWeb3()
@@ -13,111 +13,41 @@ export default function Dashboard() {
     getUserInfo,
     getContractStats,
     getDirectReferralCount,
-    estimateStaticReward,
-    getRecentEarnings
+    estimateStaticReward
   } = useStaking()
 
   const [stats, setStats] = useState(null)
   const [userInfo, setUserInfo] = useState(null)
   const [rewardEst, setRewardEst] = useState({ usdtValue: 0n, xmrValue: 0n })
   const [directCount, setDirectCount] = useState(0)
-  const [recentEarnings, setRecentEarnings] = useState([])
-  const [earningsLoading, setEarningsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
-    setEarningsLoading(true)
+    setLoading(true)
     try {
       const contractStats = await getContractStats()
       setStats(contractStats)
 
       if (account) {
-        const [info, est, count, earnings] = await Promise.all([
+        const [info, est, count] = await Promise.all([
           getUserInfo(account),
           estimateStaticReward(account),
-          getDirectReferralCount(account),
-          getRecentEarnings(account, 6)
+          getDirectReferralCount(account)
         ])
         setUserInfo(info)
         setRewardEst(est)
         setDirectCount(count)
-        setRecentEarnings(earnings)
       }
     } catch (err) {
       console.error('加载数据失败:', err)
     } finally {
       setLoading(false)
-      setEarningsLoading(false)
     }
-  }, [account, getContractStats, getUserInfo, estimateStaticReward, getDirectReferralCount, getRecentEarnings])
+  }, [account, getContractStats, getUserInfo, estimateStaticReward, getDirectReferralCount])
 
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  const getEarningLabel = (event) => {
-    switch (event.type) {
-      case 'StaticRewardClaimed':
-        return '静态收益领取'
-      case 'GenerationReward':
-        return `${event.args.generation}代奖励`
-      case 'TeamReward':
-        return `团队奖励 (${getLevelName(event.args.level)})`
-      case 'FlashExchanged':
-        return '闪兑 XMR'
-      case 'USDTWithdrawn':
-        return 'USDT 提现'
-      case 'XMRWithdrawalRequested':
-        return 'XMR 提现请求'
-      default:
-        return event.type
-    }
-  }
-
-  const getEarningAmount = (event) => {
-    try {
-      switch (event.type) {
-        case 'StaticRewardClaimed':
-          return `${formatNumber(event.args.usdtValue)} USDT`
-        case 'GenerationReward':
-        case 'TeamReward':
-          return `${formatNumber(event.args.amount)} USDT`
-        case 'FlashExchanged':
-          return `${formatNumber(event.args.usdtAmount)} USDT`
-        case 'USDTWithdrawn':
-          return `${formatNumber(event.args.amount)} USDT`
-        case 'XMRWithdrawalRequested':
-          return `${formatNumber(event.args.amount)} XMR`
-        default:
-          return ''
-      }
-    } catch {
-      return ''
-    }
-  }
-
-  const getEarningIcon = (type) => {
-    if (type === 'StaticRewardClaimed' || type === 'GenerationReward' || type === 'TeamReward') {
-      return (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2V22M17 5H9.5A3.5 3.5 0 009.5 12H14.5A3.5 3.5 0 0114.5 19H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )
-    }
-    if (type === 'FlashExchanged') {
-      return (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )
-    }
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 8V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    )
-  }
 
   if (loading) {
     return (
@@ -422,43 +352,7 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            <Card title="最近收益" icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }>
-              {earningsLoading ? (
-                <div className="page-loading" style={{ minHeight: 160 }}>
-                  <div className="loading-spinner"></div>
-                </div>
-              ) : recentEarnings.length === 0 ? (
-                <div className="empty-state" style={{ padding: '32px 20px' }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <p>暂无收益记录</p>
-                </div>
-              ) : (
-                <div className="earnings-list">
-                  {recentEarnings.map((event, idx) => (
-                    <a
-                      key={`${event.transactionHash}-${idx}`}
-                      href={getTxHashUrl(event.transactionHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="earning-item"
-                    >
-                      <div className="earning-icon">{getEarningIcon(event.type)}</div>
-                      <div className="earning-info">
-                        <span className="earning-title">{getEarningLabel(event)}</span>
-                        <span className="earning-meta">Block {event.blockNumber}</span>
-                      </div>
-                      <span className="earning-amount">{getEarningAmount(event)}</span>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </Card>
+
 
             {isAdmin && (
               <Card title="合约状态" icon={

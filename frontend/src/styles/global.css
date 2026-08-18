@@ -1432,6 +1432,46 @@ button {
   color: var(--color-text-sub);
 }
 
+.step-number-xmr {
+  background: transparent;
+  overflow: hidden;
+  padding: 0;
+}
+
+.step-number-xmr svg {
+  display: block;
+}
+
+/* XMR 收益自动发放展示卡（替代原手动领取） */
+.xmr-auto-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  border: 1px solid rgba(242, 104, 34, 0.25);
+  text-align: center;
+}
+
+.xmr-logo {
+  filter: drop-shadow(0 0 12px rgba(242, 104, 34, 0.35));
+}
+
+.xmr-auto-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.xmr-auto-desc {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--color-text-sub);
+  max-width: 260px;
+}
+
 .step-active .step-number {
   background: var(--color-slate);
   color: white;

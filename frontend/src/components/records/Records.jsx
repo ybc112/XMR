@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatEther } from 'ethers'
+import { Contract, JsonRpcProvider, formatEther } from 'ethers'
 import Card from '../common/Card.jsx'
 import Button from '../common/Button.jsx'
 import Badge from '../common/Badge.jsx'
@@ -9,17 +9,18 @@ import Skeleton from '../common/Skeleton.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useToast } from '../common/Toast.jsx'
 import { formatAddress, formatDateTime, shortHash } from '../../utils/format.js'
-import { API_BASE_URL } from '../../config/contracts.js'
+import { API_BASE_URL, CONTRACT_ADDRESSES, NETWORK_CONFIG } from '../../config/contracts.js'
 import { getTxHashUrl } from '../../utils/format.js'
 
 const PAGE_SIZE = 20
 
 // 事件类型 -> 展示信息（label / 方向 / 金额字段 / 币种 / 备注）
+// noteXmr: true 表示主金额为 USDT 价值，附加显示按 XMR 价格换算的 XMR 数量
 const RECORD_TYPE_MAP = {
   Invested: { label: '投资', direction: 'out', symbol: 'USDT', amountKey: 'amount' },
   StaticRewardClaimed: { label: '静态收益', direction: 'in', symbol: 'XMR', amountKey: 'xmrAmount', noteKey: 'usdtValue', noteSymbol: 'USDT' },
-  GenerationReward: { label: '推荐奖', direction: 'in', symbol: 'USDT', amountKey: 'amount' },
-  TeamReward: { label: '团队奖', direction: 'in', symbol: 'USDT', amountKey: 'amount' },
+  GenerationReward: { label: '推荐奖', direction: 'in', symbol: 'USDT', amountKey: 'amount', noteXmr: true },
+  TeamReward: { label: '团队奖', direction: 'in', symbol: 'USDT', amountKey: 'amount', noteXmr: true },
   FlashExchanged: { label: '闪兑', direction: 'swap', symbol: 'USDT', amountKey: 'usdtAmount', noteKey: 'xmrAmount', noteSymbol: 'XMR' },
   USDTWithdrawn: { label: 'USDT 提现', direction: 'out', symbol: 'USDT', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'USDT' },
   XMRWithdrawalRequested: { label: 'XMR 提现申请', direction: 'out', symbol: 'XMR', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'XMR' },
@@ -44,11 +45,31 @@ function formatTokenAmount(value, decimals = 4) {
   }
 }
 
-function RecordRow({ record }) {
+// 直接格式化十进制数量（如换算后的 XMR 数，非 wei）
+function formatPlainAmount(num, decimals = 6) {
+  if (!isFinite(num) || num <= 0) return '0'
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  })
+}
+
+function RecordRow({ record, xmrPrice }) {
   const meta = RECORD_TYPE_MAP[record.eventType] || { label: record.eventType, direction: 'swap', symbol: '', amountKey: null }
   const amount = meta.amountKey ? record.args?.[meta.amountKey] : null
   const fee = meta.feeKey ? record.args?.[meta.feeKey] : null
   const note = meta.noteKey ? record.args?.[meta.noteKey] : null
+
+  // USDT 价值按当前 XMR 价格换算的 XMR 数量（完整显示：+5 USDT ≈ 0.0121 XMR）
+  let noteXmrAmount = null
+  if (meta.noteXmr && amount !== null && amount !== undefined && xmrPrice > 0) {
+    try {
+      const usdt = Number(formatEther(amount))
+      noteXmrAmount = usdt / xmrPrice
+    } catch {
+      noteXmrAmount = null
+    }
+  }
 
   const dirText = meta.direction === 'in' ? '+' : meta.direction === 'out' ? '-' : ''
   const dirClass = meta.direction === 'in' ? 'record-amount-in' : meta.direction === 'out' ? 'record-amount-out' : 'record-amount-swap'
@@ -95,6 +116,9 @@ function RecordRow({ record }) {
         {fee !== null && fee !== undefined && Number(fee) > 0 ? (
           <span className="record-fee">手续费 {formatTokenAmount(fee)} {meta.feeSymbol}</span>
         ) : null}
+        {noteXmrAmount !== null && noteXmrAmount > 0 ? (
+          <span className="record-fee">≈ {formatPlainAmount(noteXmrAmount)} XMR</span>
+        ) : null}
         {note !== null && note !== undefined && Number(note) > 0 ? (
           <span className="record-fee">≈ {formatTokenAmount(note)} {meta.noteSymbol}</span>
         ) : null}
@@ -115,7 +139,29 @@ export default function Records() {
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [backendDown, setBackendDown] = useState(false)
+  const [xmrPrice, setXmrPrice] = useState(0)
   const abortRef = useRef(null)
+
+  // 读取链上 XMR 价格（用于团队奖/推荐奖的 XMR 等值换算显示）
+  useEffect(() => {
+    let cancelled = false
+    const loadPrice = async () => {
+      try {
+        const provider = new JsonRpcProvider(NETWORK_CONFIG.rpcUrls[0])
+        const contract = new Contract(
+          CONTRACT_ADDRESSES.StakingDApp,
+          ['function xmrPrice() view returns (uint256)'],
+          provider
+        )
+        const price = Number(formatEther(await contract.xmrPrice()))
+        if (!cancelled && price > 0) setXmrPrice(price)
+      } catch {
+        // 价格读取失败时仅不显示换算备注，不影响流水
+      }
+    }
+    loadPrice()
+    return () => { cancelled = true }
+  }, [])
 
   const fetchPage = useCallback(async (targetPage, dir, append) => {
     const controller = new AbortController()
@@ -245,7 +291,7 @@ export default function Records() {
           <>
             <div className="records-list">
               {records.map((record) => (
-                <RecordRow key={`${record.txHash}-${record.logIndex}`} record={record} />
+                <RecordRow key={`${record.txHash}-${record.logIndex}`} record={record} xmrPrice={xmrPrice} />
               ))}
             </div>
             {hasMore && (

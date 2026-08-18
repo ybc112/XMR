@@ -4,7 +4,6 @@ import Card from '../common/Card.jsx'
 import Button from '../common/Button.jsx'
 import { useWeb3 } from '../../contexts/Web3Context.jsx'
 import { useStaking } from '../../hooks/useStaking.js'
-import { useToast } from '../common/Toast.jsx'
 import AnimatedNumber from '../common/AnimatedNumber.jsx'
 import { formatEther, formatNumber, formatAddress, getLevelName, getTxHashUrl, safeNumber, formatDailyRate, formatBasisPoints } from '../../utils/format.js'
 
@@ -15,10 +14,8 @@ export default function Dashboard() {
     getContractStats,
     getDirectReferralCount,
     estimateStaticReward,
-    getRecentEarnings,
-    claimStaticReward
+    getRecentEarnings
   } = useStaking()
-  const { showSuccess, showError } = useToast()
 
   const [stats, setStats] = useState(null)
   const [userInfo, setUserInfo] = useState(null)
@@ -27,7 +24,6 @@ export default function Dashboard() {
   const [recentEarnings, setRecentEarnings] = useState([])
   const [earningsLoading, setEarningsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [claiming, setClaiming] = useState(false)
 
   const loadData = useCallback(async () => {
     setEarningsLoading(true)
@@ -58,20 +54,6 @@ export default function Dashboard() {
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  const handleClaim = async () => {
-    setClaiming(true)
-    try {
-      await claimStaticReward()
-      showSuccess('静态收益领取成功！')
-      await loadData()
-    } catch (err) {
-      console.error('领取失败:', err)
-      showError(err.reason || err.message || '领取失败')
-    } finally {
-      setClaiming(false)
-    }
-  }
 
   const getEarningLabel = (event) => {
     switch (event.type) {
@@ -252,19 +234,16 @@ export default function Dashboard() {
             <span className="mobile-menu-desc">USDT / XMR</span>
           </NavLink>
 
-          <button
-            className="mobile-menu-item"
-            onClick={handleClaim}
-            disabled={!userInfo?.isRegistered || (rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.exited}
-          >
+          <div className="mobile-menu-item mobile-menu-static">
             <div className="mobile-menu-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="11" fill="#F26822" />
+                <path d="M4.8 17.2V9.2L8 12.4L12 6.8L16 12.4L19.2 9.2V17.2H16.4V13.6L12 18.2L7.6 13.6V17.2H4.8Z" fill="#fff" />
               </svg>
             </div>
-            <span className="mobile-menu-label">领取收益</span>
-            <span className="mobile-menu-desc">静态收益一键领取</span>
-          </button>
+            <span className="mobile-menu-label">XMR 收益</span>
+            <span className="mobile-menu-desc">按周期自动发放</span>
+          </div>
 
           <NavLink to="/staking#invite" className="mobile-menu-item">
             <div className="mobile-menu-icon">

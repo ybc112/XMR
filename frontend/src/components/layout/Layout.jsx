@@ -1,7 +1,6 @@
 import React from 'react'
 import Navbar from './Navbar.jsx'
 import MobileBottomNav from './MobileBottomNav.jsx'
-import ChatFAB from '../chat/ChatFAB.jsx'
 
 export default function Layout({ children }) {
   return (
@@ -25,7 +24,6 @@ export default function Layout({ children }) {
       </footer>
 
       <MobileBottomNav />
-      <ChatFAB />
     </div>
   )
 }

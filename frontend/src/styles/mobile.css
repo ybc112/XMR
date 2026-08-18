@@ -430,6 +430,16 @@
     -webkit-backdrop-filter: blur(12px);
   }
 
+  /* XMR 收益自动发放展示项（纯展示，不可点击） */
+  .mobile-menu-static {
+    cursor: default;
+    border-color: rgba(242, 104, 34, 0.35);
+  }
+
+  .mobile-menu-static .mobile-menu-icon {
+    color: #F26822;
+  }
+
   .mobile-menu-item::before {
     content: '';
     position: absolute;

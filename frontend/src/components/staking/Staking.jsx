@@ -13,13 +13,12 @@ import { ethers } from 'ethers'
 
 export default function Staking() {
   const { account, isConnected, connectWallet } = useWeb3()
-  const { register, invest, claimStaticReward, getUserInfo, getContractStats, estimateStaticReward } = useStaking()
+  const { register, invest, getUserInfo, getContractStats } = useStaking()
   const { getUSDTBalance } = useContracts()
   const { showSuccess, showError, showInfo } = useToast()
 
   const [userInfo, setUserInfo] = useState(null)
   const [usdtBalance, setUsdtBalance] = useState(0n)
-  const [rewardEst, setRewardEst] = useState({ usdtValue: 0n, xmrValue: 0n })
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -29,28 +28,25 @@ export default function Staking() {
   const [investAmount, setInvestAmount] = useState('')
   const [investing, setInvesting] = useState(false)
 
-  const [claiming, setClaiming] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!account) return
     try {
-      const [info, balance, est, contractStats] = await Promise.all([
+      const [info, balance, contractStats] = await Promise.all([
         getUserInfo(account),
         getUSDTBalance(account),
-        estimateStaticReward(account),
         getContractStats()
       ])
       setUserInfo(info)
       setUsdtBalance(balance)
-      setRewardEst(est)
       setStats(contractStats)
     } catch (err) {
       console.error('加载数据失败:', err)
     } finally {
       setLoading(false)
     }
-  }, [account, getUserInfo, getUSDTBalance, estimateStaticReward, getContractStats])
+  }, [account, getUserInfo, getUSDTBalance, getContractStats])
 
   useEffect(() => {
     if (isConnected && account) {
@@ -140,20 +136,6 @@ export default function Staking() {
       showError(parseContractError(err, '投资失败'))
     } finally {
       setInvesting(false)
-    }
-  }
-
-  const handleClaim = async () => {
-    setClaiming(true)
-    try {
-      await claimStaticReward()
-      showSuccess('静态收益领取成功！')
-      await loadData()
-    } catch (err) {
-      console.error('领取失败:', err)
-      showError(parseContractError(err, '领取失败'))
-    } finally {
-      setClaiming(false)
     }
   }
 
@@ -297,38 +279,18 @@ export default function Staking() {
     )
   }
 
-  const claimTab = {
-    label: '领取',
-    content: isRegistered ? (
+  const xmrTab = {
+    label: 'XMR',
+    content: (
       <div className="form-section">
-        <div className="reward-display">
-          <div className="reward-item">
-            <p className="reward-label">可领取 USDT</p>
-            <p className="reward-value text-gold">{formatNumber(rewardEst.usdtValue)}</p>
-          </div>
-          <div className="reward-divider"></div>
-          <div className="reward-item">
-            <p className="reward-label">可领取 XMR</p>
-            <p className="reward-value text-amber">{formatNumber(rewardEst.xmrValue)}</p>
-          </div>
+        <div className="xmr-auto-card">
+          <svg className="xmr-logo" width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="11" fill="#F26822" />
+            <path d="M4.8 17.2V9.2L8 12.4L12 6.8L16 12.4L19.2 9.2V17.2H16.4V13.6L12 18.2L7.6 13.6V17.2H4.8Z" fill="#fff" />
+          </svg>
+          <p className="xmr-auto-title">收益自动发放</p>
+          <p className="xmr-auto-desc">静态收益与团队奖励按周期自动结算到账（XMR），无需手动领取</p>
         </div>
-        <Button
-          variant="accent"
-          fullWidth
-          onClick={handleClaim}
-          loading={claiming}
-          disabled={(rewardEst.usdtValue === 0n && rewardEst.xmrValue === 0n) || userInfo?.isBlacklisted}
-        >
-          {userInfo?.isBlacklisted ? '账户已被拉黑' : '领取静态收益'}
-        </Button>
-      </div>
-    ) : (
-      <div className="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#64748B" strokeWidth="1.5" />
-          <path d="M12 8V12M12 16H12.01" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-        <p>请先完成注册</p>
       </div>
     )
   }
@@ -337,7 +299,7 @@ export default function Staking() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">算力</h1>
-        <p className="page-subtitle">注册、投资并领取您的静态收益</p>
+        <p className="page-subtitle">注册、投资，收益自动发放到账</p>
       </div>
 
       <div className="step-indicator">
@@ -352,14 +314,19 @@ export default function Staking() {
         </div>
         <div className="step-divider"></div>
         <div className={`step ${isRegistered ? 'step-active' : ''}`}>
-          <span className="step-number">3</span>
-          <span>领取</span>
+          <span className="step-number step-number-xmr">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="11" fill="#F26822" />
+              <path d="M4.8 17.2V9.2L8 12.4L12 6.8L16 12.4L19.2 9.2V17.2H16.4V13.6L12 18.2L7.6 13.6V17.2H4.8Z" fill="#fff" />
+            </svg>
+          </span>
+          <span>自动发放</span>
         </div>
       </div>
 
       <div className="staking-grid">
         <Card title="算力操作" subtitle={isRegistered ? `USDT 余额: ${formatNumber(usdtBalance)}` : '完成注册后即可投资'} featured>
-          <Tabs tabs={[registerTab, investTab, claimTab]} defaultActive={isRegistered ? 1 : 0} />
+          <Tabs tabs={[registerTab, investTab, xmrTab]} defaultActive={isRegistered ? 1 : 0} />
         </Card>
 
         <Card title="投资概览" subtitle={isRegistered ? getLevelName(userInfo.level) : '未注册'}>

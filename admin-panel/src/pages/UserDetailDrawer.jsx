@@ -30,7 +30,7 @@ import {
 import CopyableText, { TxHashLink } from '../components/CopyableText';
 import Money from '../components/Money';
 import { usePanelWallet } from '../context/WalletContext';
-import { sendTx, txErrorMessage } from '../config/contracts';
+import { STAKING_ABI, sendTx, txErrorMessage } from '../config/contracts';
 import {
   eventDirection,
   eventLabel,
@@ -349,21 +349,59 @@ function ActionsTab({ address, detail, onRefresh }) {
     }
   };
 
+  /**
+   * onlyOwner 类操作（调整余额/拉黑/费率/暂停等）：必须走多签。
+   * - 连接了 owner 钱包 → 小狐狸直签多签合约提交交易
+   * - 未连接钱包 → 后端提交多签（需 owner 确认）
+   */
+  const runOwnerOp = async (getOp, successMsg) => {
+    setSubmitting(true);
+    try {
+      if (wallet.canSignDirectly) {
+        if (!wallet.isMsOwner) {
+          throw new Error('该操作仅限多签 owner 执行：请切换到 owner 钱包提交多签，或断开钱包由后端提交（仍需 2/3 owner 确认）。');
+        }
+        const { fn, args } = getOp(true);
+        const txId = await wallet.submitMultisigOp(STAKING_ABI, fn, args);
+        modal.info({
+          title: '已提交多签',
+          content: `${successMsg}已提交多签交易 #${txId}，需 2/3 owner 确认后自动生效。`,
+        });
+      } else {
+        const res = await getOp(false);
+        if (res && res.mode === 'multisig') {
+          modal.info({
+            title: '已提交多签',
+            content: `${successMsg}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
+          });
+        } else {
+          message.success(successMsg || '操作成功');
+        }
+      }
+      onRefresh && onRefresh();
+      return true;
+    } catch (e) {
+      message.error(wallet.canSignDirectly ? txErrorMessage(e) : friendlyActionError(e.message));
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submitBalance = ({ kind, delta }) => {
     modal.confirm({
       title: '确认调整余额',
-      content: `将为用户 ${address} ${delta >= 0 ? '增加' : '减少'} ${Math.abs(delta)} ${kind}，确认执行？`,
+      content: `将为用户 ${address} ${delta >= 0 ? '增加' : '减少'} ${Math.abs(delta)} ${kind}（仅限多签 owner 操作），确认提交？`,
       onOk: async () => {
-        const ok = await runOp(
-          (staking) =>
-            staking
-              ? sendTx(() =>
-                  kind === 'USDT'
-                    ? staking.adjustUserUSDT(address, BigInt(Math.round(Number(delta))))
-                    : staking.adjustUserXMR(address, BigInt(Math.round(Number(delta)))),
-                )
+        const ok = await runOwnerOp(
+          (isDirect) =>
+            isDirect
+              ? {
+                  fn: kind === 'USDT' ? 'adjustUserUSDT' : 'adjustUserXMR',
+                  args: [address, BigInt(Math.round(Number(delta)))],
+                }
               : adjustBalance(address, { kind, delta: Number(delta) }),
-          '余额调整已提交',
+          '余额调整',
         );
         if (ok) balanceForm.resetFields();
       },
@@ -374,15 +412,15 @@ function ActionsTab({ address, detail, onRefresh }) {
     const next = !(detail && detail.isBlacklisted);
     modal.confirm({
       title: next ? '确认拉黑该用户' : '确认解除拉黑',
-      content: next ? '拉黑后该用户将无法进行合约交互。' : '解除后将恢复该用户的正常使用。',
+      content: next ? '拉黑后该用户将无法进行合约交互（仅限多签 owner 操作）。' : '解除后将恢复该用户的正常使用（仅限多签 owner 操作）。',
       okButtonProps: next ? { danger: true } : undefined,
       onOk: () =>
-        runOp(
-          (staking) =>
-            staking
-              ? sendTx(() => staking.setBlacklist(address, next))
+        runOwnerOp(
+          (isDirect) =>
+            isDirect
+              ? { fn: 'setBlacklist', args: [address, next] }
               : setBlacklist(address, next),
-          next ? '已拉黑' : '已解除拉黑',
+          next ? '拉黑' : '解除拉黑',
         ),
     });
   };

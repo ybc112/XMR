@@ -10,7 +10,7 @@ import {
   emergencyUnpause,
 } from '../api/client';
 import { usePanelWallet } from '../context/WalletContext';
-import { sendTx, txErrorMessage } from '../config/contracts';
+import { STAKING_ABI, sendTx, txErrorMessage } from '../config/contracts';
 
 function ParamCard({ title, tip, children }) {
   return (
@@ -59,6 +59,39 @@ export default function Settings() {
         message.success(`${label}已更新（钱包直签）`);
       } else {
         const res = await fn(null);
+        if (res && res.mode === 'multisig') {
+          modal.info({
+            title: '已提交多签',
+            content: `${label}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
+          });
+        } else {
+          message.success(`${label}已更新`);
+        }
+      }
+      loadStats();
+    } catch (e) {
+      message.error(wallet.canSignDirectly ? txErrorMessage(e) : e.message);
+    } finally {
+      setSaving('');
+    }
+  };
+
+  /** onlyOwner 类操作（提现费率/紧急暂停等）：必须走多签提交 */
+  const runOwnerSave = async (key, getOp, label) => {
+    setSaving(key);
+    try {
+      if (wallet.canSignDirectly) {
+        if (!wallet.isMsOwner) {
+          throw new Error('该操作仅限多签 owner 执行：请切换到 owner 钱包提交多签，或断开钱包由后端提交（仍需 2/3 owner 确认）。');
+        }
+        const { fn, args } = getOp(true);
+        const txId = await wallet.submitMultisigOp(STAKING_ABI, fn, args);
+        modal.info({
+          title: '已提交多签',
+          content: `${label}已提交多签交易 #${txId}，需 2/3 owner 确认后自动生效。`,
+        });
+      } else {
+        const res = await getOp(false);
         if (res && res.mode === 'multisig') {
           modal.info({
             title: '已提交多签',
@@ -132,11 +165,14 @@ export default function Settings() {
             layout="inline"
             onFinish={({ fee }) =>
               confirmThen('确认修改提现费率？', `新费率：${fee} 基点（${fee / 100}%）`, () =>
-                runSave('fee', (staking) =>
-                  staking
-                    ? sendTx(() => staking.setWithdrawFee(BigInt(Math.round(Number(fee)))))
-                    : setWithdrawFee(Number(fee)),
-                '提现费率'),
+                runOwnerSave(
+                  'fee',
+                  (isDirect) =>
+                    isDirect
+                      ? { fn: 'setWithdrawFee', args: [BigInt(Math.round(Number(fee)))] }
+                      : setWithdrawFee(Number(fee)),
+                  '提现费率',
+                ),
               )
             }
           >
@@ -222,8 +258,13 @@ export default function Settings() {
             onClick={() =>
               confirmThen(
                 '紧急暂停合约',
-                '暂停后所有质押、提现、奖励发放将立即停止，影响全体用户！确认继续？',
-                () => runSave('pause', (staking) => staking ? sendTx(() => staking.emergencyPause()) : emergencyPause(), '紧急暂停'),
+                '暂停后所有质押、提现、奖励发放将立即停止，影响全体用户！（仅限多签 owner 操作）确认继续？',
+                () =>
+                  runOwnerSave(
+                    'pause',
+                    (isDirect) => (isDirect ? { fn: 'emergencyPause', args: [] } : emergencyPause()),
+                    '紧急暂停',
+                  ),
               )
             }
           >
@@ -235,8 +276,12 @@ export default function Settings() {
             disabled={!paused}
             loading={saving === 'unpause'}
             onClick={() =>
-              confirmThen('恢复合约运行', '将解除紧急暂停状态，恢复所有合约功能。确认继续？', () =>
-                runSave('unpause', (staking) => staking ? sendTx(() => staking.emergencyUnpause()) : emergencyUnpause(), '恢复运行'),
+              confirmThen('恢复合约运行', '将解除紧急暂停状态，恢复所有合约功能（仅限多签 owner 操作）。确认继续？', () =>
+                runOwnerSave(
+                  'unpause',
+                  (isDirect) => (isDirect ? { fn: 'emergencyUnpause', args: [] } : emergencyUnpause()),
+                  '恢复运行',
+                ),
               )
             }
           >

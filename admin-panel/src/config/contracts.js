@@ -25,7 +25,13 @@ export const STAKING_ABI = [
   'function owner() view returns (address)',
 ];
 
-export const MULTISIG_ABI = ['function isOwner(address) view returns (bool)'];
+export const MULTISIG_ABI = [
+  'function isOwner(address) view returns (bool)',
+  'function submitTransaction(address destination, uint256 value, bytes data) returns (uint256)',
+  'function confirmTransaction(uint256 txId)',
+  'function executeTransaction(uint256 txId)',
+  'function transactionCount() view returns (uint256)',
+];
 
 export function shortenAddr(addr) {
   if (!addr) return '';
@@ -35,8 +41,11 @@ export function shortenAddr(addr) {
 export function txErrorMessage(e) {
   const m = String(e?.shortMessage || e?.info?.error?.message || e?.message || '');
   if (/user rejected|rejected the request/i.test(m)) return '您在钱包中取消了签名';
-  if (/only ?owner|only ?admin/i.test(m)) return '当前钱包不是合约管理员，无法执行该操作';
-  if (/insufficient funds|gas required exceeds/i.test(m)) return '钱包 tBNB 不足，请先充值 gas';
+  if (/OwnableUnauthorizedAccount|only ?owner|unknown custom error/i.test(m)) {
+    return '权限不足：该操作仅限多签 owner 通过「多签提交」执行。请切换到 owner 钱包，或在未连接钱包模式下由后端提交多签（需 2/3 确认）。';
+  }
+  if (/only ?admin|not admin/i.test(m)) return '当前钱包不是合约管理员，无法执行该操作';
+  if (/insufficient funds|gas required exceeds|underpriced/i.test(m)) return '钱包 BNB 不足，请先充值 gas';
   if (/no pending/i.test(m)) return '该用户链上已无待处理提现，请刷新列表';
   if (/network changed|underlying network/i.test(m)) return '网络切换中，请重试';
   return m || '交易发送失败';

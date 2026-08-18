@@ -128,6 +128,30 @@ export function PanelWalletProvider({ children }) {
     return new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, signer);
   }, [account]);
 
+  /**
+   * 多签 owner 直签提交一笔多签操作（onlyOwner 函数必须走多签）
+   * @param {string[]} abi 目标合约 ABI（用于编码 calldata）
+   * @param {string} fnName 函数名
+   * @param {unknown[]} args 函数参数
+   * @returns {Promise<string>} 多签交易编号 txId
+   */
+  const submitMultisigOp = useCallback(
+    async (abi, fnName, args) => {
+      if (!account) throw new Error('请先连接钱包');
+      if (!isMsOwner) throw new Error('当前钱包不是多签 owner，无法提交该操作。请切换到 owner 钱包后重试。');
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const iface = new ethers.Interface(abi);
+      const data = iface.encodeFunctionData(fnName, args);
+      const multisig = new ethers.Contract(MULTISIG_ADDRESS, MULTISIG_ABI, signer);
+      const txId = await multisig.submitTransaction.staticCall(STAKING_ADDRESS, 0, data);
+      const tx = await multisig.submitTransaction(STAKING_ADDRESS, 0, data);
+      await tx.wait();
+      return txId.toString();
+    },
+    [account, isMsOwner],
+  );
+
   const value = useMemo(
     () => ({
       account,
@@ -139,10 +163,11 @@ export function PanelWalletProvider({ children }) {
       connect,
       disconnect,
       getStakingWithSigner,
+      submitMultisigOp,
       // 连接了钱包且在正确链上 → 操作走前端直签
       canSignDirectly: !!account && chainOk,
     }),
-    [account, chainOk, connecting, hasWallet, isContractAdmin, isMsOwner, connect, disconnect, getStakingWithSigner],
+    [account, chainOk, connecting, hasWallet, isContractAdmin, isMsOwner, connect, disconnect, getStakingWithSigner, submitMultisigOp],
   );
 
   return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;

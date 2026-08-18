@@ -26,9 +26,6 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 pendingUSDT;
         uint256 pendingXMR;
         uint256 xmrWithdrawalPending;
-        uint256 teamStaticEarnings;
-        uint256 teamRewardDebt;
-        uint8 maxChildLevel;
     }
 
     struct LevelInfo {
@@ -277,11 +274,6 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             _settleUser(userList[i], currentPeriod);
         }
 
-        // 团队奖按伞下累计静态收益统一结算（级差/平级/超越）
-        for (uint256 i = 0; i < count; i++) {
-            _settleTeamReward(userList[i]);
-        }
-
         emit DailySettlement(currentPeriod, _xmrPrice);
     }
 
@@ -318,8 +310,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
         user.totalEarned += cappedReward;
 
-        // 累计本次静态收益到所有上级的伞下静态收益（团队奖按伞下总静态收益汇总结算）
-        _updateTeamStaticEarnings(_user, cappedReward);
+        _distributeTeamRewards(_user, cappedReward);
 
         emit StaticRewardClaimed(_user, cappedReward, xmrReward);
 
@@ -473,9 +464,6 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         if (newLevel != oldLevel) {
             user.level = newLevel;
             emit LevelUpdated(_user, oldLevel, newLevel);
-            if (newLevel > oldLevel) {
-                _updateMaxChildLevel(_user, newLevel);
-            }
         }
     }
 
@@ -514,72 +502,82 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
     }
 
-    /// 累计本次静态收益到所有上级的伞下静态收益
-    function _updateTeamStaticEarnings(address _user, uint256 _amount) internal {
+    /// 团队奖（直推奖 + 级差奖 + 平级/超越奖，随静态收益逐笔结算，XMR 记账）
+    /// _user 获得静态收益 _baseValue 时，沿推荐链向上分配：
+    ///   1. 直推奖：直推上级拿 _baseValue × 上级级别费率（全额）；
+    ///   2. 级差奖：隔代上级拿 _baseValue × (上级费率 − 路径最高费率)，
+    ///      路径 = 收益者自身及向上到该上级之前的所有账户；
+    ///   3. 平级/超越奖：账户每获得一笔动态收益时，其直推上级若级别不高于该账户，
+    ///      额外拿该笔动态收益的 10%；平级/超越奖本身不再触发上级抽取（防嵌套）。
+    function _distributeTeamRewards(address _user, uint256 _baseValue) internal {
         address current = users[_user].referrer;
+        uint256 pathMaxRate = users[_user].level > 0
+            ? levels[users[_user].level - 1].teamRate
+            : 0;
+        bool isDirect = true;
         uint256 depth = 0;
 
         while (current != address(0) && depth < MAX_TEAM_DEPTH) {
-            users[current].teamStaticEarnings += _amount;
-            current = users[current].referrer;
+            User storage ancestor = users[current];
+
+            if (ancestor.level > 0 && !ancestor.exited && !ancestor.isBlacklisted) {
+                uint256 currentRate = levels[ancestor.level - 1].teamRate;
+                uint256 reward;
+
+                if (isDirect) {
+                    reward = _baseValue * currentRate / 10000;
+                } else if (currentRate > pathMaxRate) {
+                    reward = _baseValue * (currentRate - pathMaxRate) / 10000;
+                }
+
+                if (reward > 0) {
+                    reward = _applyExitLimit(current, reward);
+                    if (reward > 0) {
+                        _creditTeamReward(current, _user, reward);
+                        _payPeerBonus(current, reward);
+                    }
+                }
+            }
+
+            if (ancestor.level > 0) {
+                uint256 r = levels[ancestor.level - 1].teamRate;
+                if (r > pathMaxRate) pathMaxRate = r;
+            }
+
+            isDirect = false;
+            current = ancestor.referrer;
             depth += 1;
         }
     }
 
-    /// 用户升级时，向上传播伞下最高级别
-    function _updateMaxChildLevel(address _user, uint8 _level) internal {
-        address current = users[_user].referrer;
-
-        while (current != address(0)) {
-            if (_level > users[current].maxChildLevel) {
-                users[current].maxChildLevel = _level;
-            }
-            current = users[current].referrer;
-        }
-    }
-
-    /// 团队奖按伞下累计静态收益统一结算（XMR 记账）
-    /// 规则：
-    ///   - 结算基数 = 该用户伞下所有账户累计静态收益之和（teamStaticEarnings）；
-    ///   - 若用户级别 > 伞下最高级别：拿级差 = 基数 * (用户费率 - 伞下最高费率) / 10000；
-    ///   - 若用户级别 <= 伞下最高级别（平级或超越）：拿 10% = 基数 * 1000 / 10000。
-    function _settleTeamReward(address _user) internal {
-        User storage user = users[_user];
-        if (user.level == 0 || user.exited || user.isBlacklisted) return;
-
-        uint256 userRate = levels[user.level - 1].teamRate;
-        uint256 rewardBase = user.teamStaticEarnings;
-        if (rewardBase == 0) return;
-
-        uint256 totalReward;
-        if (user.level > user.maxChildLevel) {
-            uint256 childRate = user.maxChildLevel > 0
-                ? levels[user.maxChildLevel - 1].teamRate
-                : 0;
-            totalReward = rewardBase * (userRate - childRate) / 10000;
-        } else {
-            totalReward = rewardBase * 1000 / 10000;
-        }
-
-        if (totalReward <= user.teamRewardDebt) return;
-
-        uint256 due = totalReward - user.teamRewardDebt;
-        due = _applyExitLimit(_user, due);
-        user.teamRewardDebt = totalReward;
-
-        if (due == 0) return;
-
-        uint256 xmrReward = due * 10 ** 18 / xmrPrice;
+    function _creditTeamReward(address _to, address _from, uint256 _amount) internal {
+        User storage user = users[_to];
+        uint256 xmrReward = _amount * 10 ** 18 / xmrPrice;
         if (xmrReward > 0) {
             xmrToken.mint(address(this), xmrReward);
             user.pendingXMR += xmrReward;
         }
-        user.totalEarned += due;
-        emit TeamReward(_user, address(0), user.level, due);
+        user.totalEarned += _amount;
+        emit TeamReward(_to, _from, user.level, _amount);
 
         if (user.totalEarned >= user.exitLimit) {
             user.exited = true;
-            emit Exited(_user, user.totalEarned);
+            emit Exited(_to, user.totalEarned);
+        }
+    }
+
+    /// 平级/超越奖：_child 获得动态收益 _amount 时，其直推上级若级别不高于 _child，拿 10%
+    function _payPeerBonus(address _child, uint256 _amount) internal {
+        address up = users[_child].referrer;
+        if (up == address(0)) return;
+
+        User storage parent = users[up];
+        if (parent.exited || parent.isBlacklisted) return;
+        if (users[_child].level < parent.level) return;
+
+        uint256 bonus = _applyExitLimit(up, _amount * 1000 / 10000);
+        if (bonus > 0) {
+            _creditTeamReward(up, _child, bonus);
         }
     }
 
@@ -618,9 +616,6 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 memberId;
         uint256 xmrWithdrawalPending;
         string xmrAddress;
-        uint256 teamStaticEarnings;
-        uint256 teamRewardDebt;
-        uint8 maxChildLevel;
     }
 
     function getUserInfo(address _user) external view returns (UserInfoView memory) {
@@ -640,10 +635,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             maxAreaVolume: user.maxAreaVolume,
             memberId: addressToMemberId[_user],
             xmrWithdrawalPending: user.xmrWithdrawalPending,
-            xmrAddress: xmrAddress[_user],
-            teamStaticEarnings: user.teamStaticEarnings,
-            teamRewardDebt: user.teamRewardDebt,
-            maxChildLevel: user.maxChildLevel
+            xmrAddress: xmrAddress[_user]
         });
     }
 

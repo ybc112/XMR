@@ -428,30 +428,30 @@ export default function Team() {
       </div>
 
       <div className="team-grid">
-        <Card title="团队奖励规则" subtitle="团队奖按伞下所有账户静态收益之和结算">
+        <Card title="团队奖励规则" subtitle="团队奖 = 直推奖 + 级差奖 + 平级/超越奖">
           <div className="reward-rule-list">
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#B8860B' }}></span>
               <span className="reward-rule-text">
-                <strong>结算基数：</strong>您伞下所有账户（大区 + 小区）静态收益之和，升级考核只看小区业绩。
+                <strong>直推奖：</strong>拿直推下级静态收益 × 自己的级别费率（全额）。例如 M3 直推的账户产生静态收益，M3 拿其 15%。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#3B82F6' }}></span>
               <span className="reward-rule-text">
-                <strong>级差奖励：</strong>按伞下最高级别对应的费率差计算，例如您是 M4、伞下最高 M3，则拿 (20% − 15%) = 5% 的级差。
+                <strong>级差奖：</strong>隔代下级按费率差计算。M4(20%) 伞下路径最高 M3(15%) 时，M4 拿每个隔代账户静态收益的 5%；逐级只拿级差，总拨出封顶 45%（M9）。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#EF4444' }}></span>
               <span className="reward-rule-text">
-                <strong>平级 / 超越：</strong>伞下出现同级或更高级别时无级差，只拿结算基数的 10%。
+                <strong>平级/超越奖：</strong>直推下级级别 ≥ 自己时，拿下级动态收益（直推+级差）的 10%。
               </span>
             </div>
             <div className="reward-rule-item">
               <span className="reward-rule-dot" style={{ background: '#10B981' }}></span>
               <span className="reward-rule-text">
-                <strong>全网结算：</strong>团队奖覆盖整个伞体，每日结算自动到账（XMR），总拨出最高 45%（M9）。
+                <strong>自动结算：</strong>团队奖以 XMR 记账，随静态收益周期自动发放，升级考核只看小区业绩。
               </span>
             </div>
           </div>

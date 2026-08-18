@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Layout, Menu, Space, Tag, Typography } from 'antd';
+import { Button, Layout, Menu, Space, Tag, Typography, App as AntApp } from 'antd';
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -8,9 +8,12 @@ import {
   SettingOutlined,
   LogoutOutlined,
   UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getStats, clearAuth } from '../api/client';
+import { usePanelWallet } from '../context/WalletContext';
+import { shortenAddr } from '../config/contracts';
 
 const { Sider, Header, Content } = Layout;
 
@@ -25,6 +28,8 @@ const MENU_ITEMS = [
 export default function BasicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { message } = AntApp.useApp();
+  const wallet = usePanelWallet();
   const [collapsed, setCollapsed] = useState(false);
   const [paused, setPaused] = useState(null);
   const username = localStorage.getItem('xmr_admin_user') || 'admin';
@@ -105,6 +110,28 @@ export default function BasicLayout() {
               <Tag color="red">合约已暂停</Tag>
             ) : (
               <Tag color="green">合约运行中</Tag>
+            )}
+            {wallet.account ? (
+              <Space size={6}>
+                <Tag icon={<WalletOutlined />} color={wallet.isContractAdmin ? 'blue' : wallet.isMsOwner ? 'geekblue' : 'red'}>
+                  {shortenAddr(wallet.account)}
+                  {wallet.isContractAdmin ? ' · 管理员' : wallet.isMsOwner ? ' · 多签Owner' : ' · 无权限'}
+                </Tag>
+                <Typography.Link style={{ fontSize: 12 }} onClick={wallet.disconnect}>
+                  断开
+                </Typography.Link>
+              </Space>
+            ) : (
+              <Button
+                size="small"
+                icon={<WalletOutlined />}
+                loading={wallet.connecting}
+                onClick={() =>
+                  wallet.connect().catch((e) => message.error(e.message || '连接钱包失败'))
+                }
+              >
+                连接钱包
+              </Button>
             )}
             <Typography.Text>
               <UserOutlined style={{ marginRight: 6 }} />

@@ -11,6 +11,8 @@ import {
   TagOutlined,
 } from '@ant-design/icons';
 import { getStats, processXmrWithdrawal } from '../api/client';
+import { usePanelWallet } from '../context/WalletContext';
+import { sendTx, txErrorMessage } from '../config/contracts';
 import CopyableText, { TxHashLink } from '../components/CopyableText';
 import Money from '../components/Money';
 import { formatAmount, formatSec } from '../utils/format';
@@ -45,6 +47,7 @@ function friendlyProcessError(msg) {
 
 export default function Dashboard() {
   const { message, modal } = App.useApp();
+  const wallet = usePanelWallet();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState('');
@@ -68,27 +71,34 @@ export default function Dashboard() {
   const onProcess = async (user) => {
     setProcessing(user);
     try {
-      const res = await processXmrWithdrawal(user);
-      if (res && res.mode === 'multisig') {
-        modal.info({
-          title: '已提交多签',
-          content: (
-            <div>
-              <p>该操作已提交多签交易 #{res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。</p>
-              {res.txHash ? (
-                <Typography.Text copyable={{ text: res.txHash }} className="mono" style={{ fontSize: 12 }}>
-                  {res.txHash}
-                </Typography.Text>
-              ) : null}
-            </div>
-          ),
-        });
-      } else {
+      if (wallet.canSignDirectly) {
+        // 前端直签：小狐狸确认后直接上链
+        const staking = await wallet.getStakingWithSigner();
+        await sendTx(() => staking.processXMRWithdrawal(user));
         message.success('已处理该笔 XMR 提现');
+      } else {
+        const res = await processXmrWithdrawal(user);
+        if (res && res.mode === 'multisig') {
+          modal.info({
+            title: '已提交多签',
+            content: (
+              <div>
+                <p>该操作已提交多签交易 #{res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。</p>
+                {res.txHash ? (
+                  <Typography.Text copyable={{ text: res.txHash }} className="mono" style={{ fontSize: 12 }}>
+                    {res.txHash}
+                  </Typography.Text>
+                ) : null}
+              </div>
+            ),
+          });
+        } else {
+          message.success('已处理该笔 XMR 提现');
+        }
       }
       load();
     } catch (e) {
-      message.error(friendlyProcessError(e.message));
+      message.error(wallet.canSignDirectly ? txErrorMessage(e) : friendlyProcessError(e.message));
     } finally {
       setProcessing('');
     }

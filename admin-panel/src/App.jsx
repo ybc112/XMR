@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import ProtectedRoute from './components/ProtectedRoute';
 import BasicLayout from './components/BasicLayout';
+import { PanelWalletProvider } from './context/WalletContext';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -21,22 +22,24 @@ function PageLoading() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/panel">
-      <Suspense fallback={<PageLoading />}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<BasicLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/multisig" element={<Multisig />} />
-              <Route path="/logs" element={<Logs />} />
-              <Route path="/settings" element={<Settings />} />
+    <PanelWalletProvider>
+      <BrowserRouter basename="/panel">
+        <Suspense fallback={<PageLoading />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<BasicLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/multisig" element={<Multisig />} />
+                <Route path="/logs" element={<Logs />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </PanelWalletProvider>
   );
 }

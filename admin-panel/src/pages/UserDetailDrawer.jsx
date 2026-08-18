@@ -29,6 +29,8 @@ import {
 } from '../api/client';
 import CopyableText, { TxHashLink } from '../components/CopyableText';
 import Money from '../components/Money';
+import { usePanelWallet } from '../context/WalletContext';
+import { sendTx, txErrorMessage } from '../config/contracts';
 import {
   eventDirection,
   eventLabel,
@@ -297,22 +299,23 @@ function EventsTab({ address }) {
 /* ---------------- 管理操作 ---------------- */
 function ActionsTab({ address, detail, onRefresh }) {
   const { message, modal } = App.useApp();
+  const wallet = usePanelWallet();
   const [balanceForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
   const friendlyActionError = (msg) => {
     const m = String(msg || '');
     if (/不是多签 owner|owner not exists/i.test(m)) {
-      return '后端钱包不是多签 owner，无法提交多签。请去主站 /admin 用多签 owner 钱包执行该操作，或把后端钱包加为多签 owner。';
+      return '后端钱包不是多签 owner，无法提交多签。请连接钱包直接签名，或去主站 /admin 用多签 owner 钱包执行。';
     }
     if (/管理员钱包未配置/i.test(m)) {
-      return '后端未配置管理员钱包，无法执行链上操作。';
+      return '后端未配置管理员钱包。请点击右上角「连接钱包」，用小狐狸直接签名操作。';
     }
     if (/only ?owner|only ?admin/i.test(m)) {
-      return '当前操作需要合约 owner 权限，请到主站 /admin 通过多签执行。';
+      return '当前钱包不是合约管理员，无法执行该操作。';
     }
     if (/insufficient funds|gas required|underpriced/i.test(m)) {
-      return '后端钱包 gas 不足，请充值 tBNB。';
+      return '钱包 gas 不足，请充值 tBNB。';
     }
     return m;
   };
@@ -320,19 +323,26 @@ function ActionsTab({ address, detail, onRefresh }) {
   const runOp = async (fn, successMsg) => {
     setSubmitting(true);
     try {
-      const res = await fn();
-      if (res && res.mode === 'multisig') {
-        modal.info({
-          title: '已提交多签',
-          content: `操作已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
-        });
-      } else {
+      if (wallet.canSignDirectly) {
+        // 前端直签：小狐狸确认后直接上链
+        const staking = await wallet.getStakingWithSigner();
+        await fn(staking);
         message.success(successMsg || '操作成功');
+      } else {
+        const res = await fn(null);
+        if (res && res.mode === 'multisig') {
+          modal.info({
+            title: '已提交多签',
+            content: `操作已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
+          });
+        } else {
+          message.success(successMsg || '操作成功');
+        }
       }
       onRefresh && onRefresh();
       return true;
     } catch (e) {
-      message.error(friendlyActionError(e.message));
+      message.error(wallet.canSignDirectly ? txErrorMessage(e) : friendlyActionError(e.message));
       return false;
     } finally {
       setSubmitting(false);
@@ -344,7 +354,17 @@ function ActionsTab({ address, detail, onRefresh }) {
       title: '确认调整余额',
       content: `将为用户 ${address} ${delta >= 0 ? '增加' : '减少'} ${Math.abs(delta)} ${kind}，确认执行？`,
       onOk: async () => {
-        const ok = await runOp(() => adjustBalance(address, { kind, delta: Number(delta) }), '余额调整已提交');
+        const ok = await runOp(
+          (staking) =>
+            staking
+              ? sendTx(() =>
+                  kind === 'USDT'
+                    ? staking.adjustUserUSDT(address, BigInt(Math.round(Number(delta))))
+                    : staking.adjustUserXMR(address, BigInt(Math.round(Number(delta)))),
+                )
+              : adjustBalance(address, { kind, delta: Number(delta) }),
+          '余额调整已提交',
+        );
         if (ok) balanceForm.resetFields();
       },
     });
@@ -356,15 +376,35 @@ function ActionsTab({ address, detail, onRefresh }) {
       title: next ? '确认拉黑该用户' : '确认解除拉黑',
       content: next ? '拉黑后该用户将无法进行合约交互。' : '解除后将恢复该用户的正常使用。',
       okButtonProps: next ? { danger: true } : undefined,
-      onOk: () => runOp(() => setBlacklist(address, next), next ? '已拉黑' : '已解除拉黑'),
+      onOk: () =>
+        runOp(
+          (staking) =>
+            staking
+              ? sendTx(() => staking.setBlacklist(address, next))
+              : setBlacklist(address, next),
+          next ? '已拉黑' : '已解除拉黑',
+        ),
     });
   };
 
   const processWithdrawal = () =>
-    runOp(() => processXmrWithdrawal(address), 'XMR 提现已处理');
+    runOp(
+      (staking) =>
+        staking
+          ? sendTx(() => staking.processXMRWithdrawal(address))
+          : processXmrWithdrawal(address),
+      'XMR 提现已处理',
+    );
 
   return (
     <div>
+      <div style={{ marginBottom: 16 }}>
+        {wallet.canSignDirectly ? (
+          <Tag color="blue">钱包直签模式：操作将通过小狐狸签名直接上链</Tag>
+        ) : (
+          <Tag color="orange">后端模式：建议点右上角「连接钱包」用小狐狸直接签名</Tag>
+        )}
+      </div>
       <CardLikeBlock title="调整余额">
         <Form
           form={balanceForm}

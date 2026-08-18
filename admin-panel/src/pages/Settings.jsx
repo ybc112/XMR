@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ethers } from 'ethers';
 import { App, Button, Card, Col, Form, Input, InputNumber, Row, Space, Tag, Typography } from 'antd';
 import {
   getStats,
@@ -8,6 +9,8 @@ import {
   emergencyPause,
   emergencyUnpause,
 } from '../api/client';
+import { usePanelWallet } from '../context/WalletContext';
+import { sendTx, txErrorMessage } from '../config/contracts';
 
 function ParamCard({ title, tip, children }) {
   return (
@@ -24,6 +27,7 @@ function ParamCard({ title, tip, children }) {
 
 export default function Settings() {
   const { message, modal } = App.useApp();
+  const wallet = usePanelWallet();
   const [stats, setStats] = useState(null);
   const [saving, setSaving] = useState('');
 
@@ -49,18 +53,24 @@ export default function Settings() {
   const runSave = async (key, fn, label) => {
     setSaving(key);
     try {
-      const res = await fn();
-      if (res && res.mode === 'multisig') {
-        modal.info({
-          title: '已提交多签',
-          content: `${label}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
-        });
+      if (wallet.canSignDirectly) {
+        const staking = await wallet.getStakingWithSigner();
+        await fn(staking);
+        message.success(`${label}已更新（钱包直签）`);
       } else {
-        message.success(`${label}已更新`);
+        const res = await fn(null);
+        if (res && res.mode === 'multisig') {
+          modal.info({
+            title: '已提交多签',
+            content: `${label}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
+          });
+        } else {
+          message.success(`${label}已更新`);
+        }
       }
       loadStats();
     } catch (e) {
-      message.error(e.message);
+      message.error(wallet.canSignDirectly ? txErrorMessage(e) : e.message);
     } finally {
       setSaving('');
     }
@@ -71,28 +81,50 @@ export default function Settings() {
   const paused = !!(stats && stats.paused);
   const rate = stats && stats.dailyRate != null ? Number(stats.dailyRate) / 100 : null;
 
-  const runSettlement = () =>
+  const runSettlement = () => {
+    const manualPrice = priceForm.getFieldValue('price');
+    const fallbackPrice =
+      manualPrice && !isNaN(Number(manualPrice)) && Number(manualPrice) > 0
+        ? String(manualPrice)
+        : stats && stats.xmrPrice != null
+          ? String(stats.xmrPrice)
+          : null;
     confirmThen(
       '手动触发结算',
       '将按当前实时 XMR 价格执行一轮结算，为所有合格用户发放静态收益与团队收益。正式环境建议在每日 12:00 后触发（测试期为每 30 分钟自动结算）。确认继续？',
       async () => {
         setSaving('settle');
         try {
-          const res = await triggerSettlement();
-          message.success(
-            `结算已完成：周期 ${res?.period ?? '-'}，价格 ${res?.price ?? '-'} USDT，交易 ${res?.txHash ?? '-'}`,
-          );
+          if (wallet.canSignDirectly) {
+            if (!fallbackPrice) throw new Error('缺少 XMR 价格参数，请先在「XMR 价格」中填写');
+            const staking = await wallet.getStakingWithSigner();
+            await sendTx(() => staking.dailySettlement(ethers.parseEther(fallbackPrice)));
+            message.success('结算已完成（钱包直签）');
+          } else {
+            const res = await triggerSettlement();
+            message.success(
+              `结算已完成：周期 ${res?.period ?? '-'}，价格 ${res?.price ?? '-'} USDT，交易 ${res?.txHash ?? '-'}`,
+            );
+          }
           loadStats();
         } catch (e) {
-          message.error(e.message);
+          message.error(wallet.canSignDirectly ? txErrorMessage(e) : e.message);
         } finally {
           setSaving('');
         }
       },
     );
+  };
 
   return (
     <div>
+      <div style={{ marginBottom: 12 }}>
+        {wallet.canSignDirectly ? (
+          <Tag color="blue">钱包直签模式：参数修改将通过小狐狸签名直接上链</Tag>
+        ) : (
+          <Tag color="orange">后端模式：建议点右上角「连接钱包」用小狐狸直接签名</Tag>
+        )}
+      </div>
       <Row gutter={[12, 12]}>
         <ParamCard title="提现费率" tip="单位为基点：100 = 1%。应用于 USDT 提现手续费。">
           <Form
@@ -100,7 +132,11 @@ export default function Settings() {
             layout="inline"
             onFinish={({ fee }) =>
               confirmThen('确认修改提现费率？', `新费率：${fee} 基点（${fee / 100}%）`, () =>
-                runSave('fee', () => setWithdrawFee(Number(fee)), '提现费率'),
+                runSave('fee', (staking) =>
+                  staking
+                    ? sendTx(() => staking.setWithdrawFee(BigInt(Math.round(Number(fee)))))
+                    : setWithdrawFee(Number(fee)),
+                '提现费率'),
               )
             }
           >
@@ -121,7 +157,11 @@ export default function Settings() {
             layout="inline"
             onFinish={({ price }) =>
               confirmThen('确认修改 XMR 价格？', `新价格：${price} USDT`, () =>
-                runSave('price', () => setXmrPrice(String(price)), 'XMR 价格'),
+                runSave('price', (staking) =>
+                  staking
+                    ? sendTx(() => staking.setXMRPrice(ethers.parseEther(String(price))))
+                    : setXmrPrice(String(price)),
+                'XMR 价格'),
               )
             }
           >
@@ -183,7 +223,7 @@ export default function Settings() {
               confirmThen(
                 '紧急暂停合约',
                 '暂停后所有质押、提现、奖励发放将立即停止，影响全体用户！确认继续？',
-                () => runSave('pause', () => emergencyPause(), '紧急暂停'),
+                () => runSave('pause', (staking) => staking ? sendTx(() => staking.emergencyPause()) : emergencyPause(), '紧急暂停'),
               )
             }
           >
@@ -196,7 +236,7 @@ export default function Settings() {
             loading={saving === 'unpause'}
             onClick={() =>
               confirmThen('恢复合约运行', '将解除紧急暂停状态，恢复所有合约功能。确认继续？', () =>
-                runSave('unpause', () => emergencyUnpause(), '恢复运行'),
+                runSave('unpause', (staking) => staking ? sendTx(() => staking.emergencyUnpause()) : emergencyUnpause(), '恢复运行'),
               )
             }
           >

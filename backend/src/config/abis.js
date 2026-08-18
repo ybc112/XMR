@@ -200,6 +200,13 @@ const STAKING_DAPP_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ name: "", type: "address" }],
+    name: "admins",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
 
   // -------- 管理函数 --------
   {

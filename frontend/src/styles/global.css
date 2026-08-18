@@ -3134,6 +3134,140 @@ button {
   margin-bottom: 12px;
 }
 
+/* 多签快捷模板 */
+.multisig-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.multisig-template-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-sub);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.multisig-template-btn:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  background: rgba(184, 134, 11, 0.06);
+}
+
+/* 管理页头部操作区 */
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-sub);
+  transition: all var(--transition-fast);
+}
+
+.panel-link:hover {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+/* 待处理 XMR 提现列表 */
+.pending-xmr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pending-xmr-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+}
+
+.pending-xmr-item .btn {
+  flex-shrink: 0;
+}
+
+.pending-xmr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pending-xmr-addr {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  cursor: pointer;
+}
+
+.pending-xmr-addr:hover {
+  color: var(--color-gold);
+}
+
+.pending-xmr-amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-xmr-xmraddr {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.pending-xmr-xmraddr:hover {
+  color: var(--color-gold);
+}
+
+.pending-xmr-time {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.pending-xmr-empty {
+  padding: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+
+.pending-xmr-manual {
+  border-top: 1px dashed var(--color-border);
+  padding-top: 14px;
+}
+
 /* 连接钱包卡片 */
 .connect-card {
   max-width: 480px;

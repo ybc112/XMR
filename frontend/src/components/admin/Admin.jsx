@@ -13,8 +13,19 @@ import { CONTRACT_ADDRESSES, NETWORK_CONFIG } from '../../config/contracts.js'
 import { STAKING_DAPP_ABI } from '../../config/abis.js'
 import { ethers } from 'ethers'
 
+const MULTISIG_TEMPLATES = [
+  { label: '紧急暂停', func: 'emergencyPause', params: '', noArgs: true },
+  { label: '恢复运行', func: 'emergencyUnpause', params: '', noArgs: true },
+  { label: '设置提现费率', func: 'setWithdrawFee', params: '500', hint: '万分比，500 = 5%' },
+  { label: '设置XMR价格', func: 'setXMRPrice', params: '150', hint: 'USDT 计价' },
+  { label: '每日结算', func: 'dailySettlement', params: '150', hint: '当日 XMR 价格' },
+  { label: '添加管理员', func: 'addAdmin', params: '', hint: '参数填入新管理员地址 0x...' },
+  { label: '移除管理员', func: 'removeAdmin', params: '', hint: '参数填入管理员地址 0x...' },
+  { label: '处理XMR提现', func: 'processXMRWithdrawal', params: '', hint: '参数填入用户地址 0x...' }
+]
+
 export default function Admin() {
-  const { account, isConnected, connectWallet, isAdmin, chainId } = useWeb3()
+  const { account, isConnected, connectWallet, isAdmin, chainId, getReadOnlyProvider } = useWeb3()
   const {
     getUserInfo,
     getContractStats,
@@ -56,6 +67,8 @@ export default function Admin() {
   const [adminAddr, setAdminAddr] = useState('')
   const [withdrawalUser, setWithdrawalUser] = useState('')
   const [withdrawalPending, setWithdrawalPending] = useState(0n)
+  const [pendingXmrList, setPendingXmrList] = useState([])
+  const [pendingXmrLoading, setPendingXmrLoading] = useState(false)
 
   const [contractBalances, setContractBalances] = useState({ usdt: 0n, xmr: 0n })
   const [requiredConfirm, setRequiredConfirm] = useState(0)
@@ -114,6 +127,66 @@ export default function Admin() {
     }
   }, [required, getTransactionCount, getOwners, isOwner, account, getTransaction, isConfirmedBy])
 
+  const loadPendingXmrList = useCallback(async () => {
+    setPendingXmrLoading(true)
+    try {
+      const readOnly = getReadOnlyProvider()
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESSES.StakingDApp,
+        STAKING_DAPP_ABI,
+        readOnly
+      )
+      const [requested, processed] = await Promise.all([
+        contract.queryFilter(contract.filters.XMRWithdrawalRequested()),
+        contract.queryFilter(contract.filters.XMRWithdrawalProcessed())
+      ])
+
+      const processedMaxBlock = new Map()
+      for (const p of processed) {
+        const u = (p.args?.user || '').toLowerCase()
+        const prev = processedMaxBlock.get(u)
+        if (prev === undefined || p.blockNumber > prev) processedMaxBlock.set(u, p.blockNumber)
+      }
+
+      const pending = requested
+        .filter((r) => {
+          const u = (r.args?.user || '').toLowerCase()
+          if (!u) return false
+          const maxBlock = processedMaxBlock.get(u)
+          return maxBlock === undefined || r.blockNumber >= maxBlock
+        })
+        .sort((a, b) => b.blockNumber - a.blockNumber)
+
+      const items = await Promise.all(
+        pending.map(async (r) => {
+          let xmrAddress = r.args?.xmrAddr || ''
+          try {
+            const latest = await contract.xmrAddress(r.args.user)
+            if (latest) xmrAddress = latest
+          } catch { /* 读取失败时保留事件内地址 */ }
+          let time = null
+          try {
+            const block = await readOnly.getBlock(r.blockNumber)
+            time = block ? block.timestamp : null
+          } catch { /* 忽略时间读取失败 */ }
+          return {
+            user: r.args.user,
+            amount: r.args.amount,
+            xmrAddress,
+            time,
+            txHash: r.transactionHash
+          }
+        })
+      )
+      setPendingXmrList(items)
+    } catch (err) {
+      console.error('加载待处理XMR提现失败:', err)
+      setPendingXmrList([])
+    } finally {
+      setPendingXmrLoading(false)
+    }
+  }, [getReadOnlyProvider])
+
   const loadData = useCallback(async () => {
     try {
       const contractStats = await getContractStats()
@@ -126,12 +199,13 @@ export default function Admin() {
 
       setContractBalances({ usdt: usdtBal, xmr: xmrBal })
       await loadMultisigData()
+      loadPendingXmrList()
     } catch (err) {
       console.error('加载数据失败:', err)
     } finally {
       setLoading(false)
     }
-  }, [getContractStats, getUSDTBalance, getXMRBalance, loadMultisigData])
+  }, [getContractStats, getUSDTBalance, getXMRBalance, loadMultisigData, loadPendingXmrList])
 
   useEffect(() => {
     if (isConnected && account) {
@@ -292,6 +366,38 @@ export default function Admin() {
     }
   }
 
+  const applyMultisigTemplate = (tpl) => {
+    setMultisigDestination(CONTRACT_ADDRESSES.StakingDApp)
+    setMultisigValue('0')
+    setMultisigFuncName(tpl.func)
+    setMultisigFuncParams(tpl.params)
+    setMultisigData('')
+    if (tpl.noArgs) {
+      try {
+        const iface = new ethers.Interface(STAKING_DAPP_ABI)
+        setMultisigData(iface.encodeFunctionData(tpl.func, []))
+        showSuccess(`已选择「${tpl.label}」并生成 calldata，可直接提交交易`)
+      } catch {
+        showInfo(`已选择「${tpl.label}」，请点击"生成 calldata"`)
+      }
+    } else {
+      showInfo(
+        tpl.hint
+          ? `已选择「${tpl.label}」：${tpl.hint}，确认参数后点击"生成 calldata"`
+          : `已选择「${tpl.label}」，请填写参数后生成 calldata`
+      )
+    }
+  }
+
+  const copyText = async (text, label = '地址') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      showSuccess(`已复制${label}`)
+    } catch {
+      showError('复制失败，请手动复制')
+    }
+  }
+
   const handleGenerateCalldata = () => {
     try {
       if (!multisigFuncName) {
@@ -372,9 +478,17 @@ export default function Admin() {
           <h1 className="page-title">管理后台</h1>
           <p className="page-subtitle">合约状态监控与参数配置</p>
         </div>
-        <Badge variant={stats?.paused ? 'danger' : 'green'}>
-          {stats?.paused ? '已暂停' : '运行中'}
-        </Badge>
+        <div className="admin-header-actions">
+          <a className="panel-link" href="/panel" target="_blank" rel="noreferrer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 13V19C18 19.55 17.55 20 17 20H5C4.45 20 4 19.55 4 19V7C4 6.45 4.45 6 5 6H11M14 4H20V10M19.5 4.5L10 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            运营后台
+          </a>
+          <Badge variant={stats?.paused ? 'danger' : 'green'}>
+            {stats?.paused ? '已暂停' : '运行中'}
+          </Badge>
+        </div>
       </div>
 
       <div className="stats-grid mb-4">
@@ -487,6 +601,19 @@ export default function Admin() {
         </Card>
 
         <Card title="多签操作" subtitle={`需要 ${requiredConfirm} 个确认`}>
+          <div className="multisig-templates">
+            {MULTISIG_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.label}
+                type="button"
+                className="multisig-template-btn"
+                onClick={() => applyMultisigTemplate(tpl)}
+                title={tpl.hint || tpl.label}
+              >
+                {tpl.label}
+              </button>
+            ))}
+          </div>
           <div className="admin-form">
             <Input
               label="目标合约地址"
@@ -599,10 +726,69 @@ export default function Admin() {
           </div>
         </Card>
 
-        <Card title="处理 XMR 提现">
-          <div className="admin-form">
+        <Card
+          title="处理 XMR 提现"
+          subtitle={pendingXmrList.length > 0 ? `${pendingXmrList.length} 笔待处理` : undefined}
+          action={
+            <Button
+              variant="outline"
+              size="small"
+              onClick={loadPendingXmrList}
+              loading={pendingXmrLoading}
+            >
+              刷新
+            </Button>
+          }
+        >
+          {pendingXmrList.length > 0 ? (
+            <div className="pending-xmr-list">
+              {pendingXmrList.map((item, idx) => (
+                <div className="pending-xmr-item" key={`${item.txHash || ''}-${idx}`}>
+                  <div className="pending-xmr-info">
+                    <span
+                      className="pending-xmr-addr"
+                      onClick={() => copyText(item.user, '用户地址')}
+                      title={item.user}
+                    >
+                      {formatAddress(item.user)}
+                    </span>
+                    <span className="pending-xmr-amount">{formatNumber(item.amount)} XMR</span>
+                    {item.xmrAddress && (
+                      <span
+                        className="pending-xmr-xmraddr"
+                        onClick={() => copyText(item.xmrAddress, 'XMR收款地址')}
+                        title={item.xmrAddress}
+                      >
+                        收款: {item.xmrAddress.length > 24
+                          ? `${item.xmrAddress.slice(0, 16)}...${item.xmrAddress.slice(-8)}`
+                          : item.xmrAddress}
+                      </span>
+                    )}
+                    {item.time && (
+                      <span className="pending-xmr-time">
+                        {new Date(item.time * 1000).toLocaleString('zh-CN', { hour12: false })}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="small"
+                    onClick={() => handleAction('处理XMR提现', processXMRWithdrawal, item.user)}
+                    loading={actionLoading}
+                  >
+                    一键处理
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="pending-xmr-empty">
+              {pendingXmrLoading ? '正在从链上加载待处理提现...' : '暂无待处理的 XMR 提现'}
+            </div>
+          )}
+          <div className="admin-form pending-xmr-manual">
             <Input
-              label="用户地址"
+              label="手动处理 - 用户地址"
               value={withdrawalUser}
               onChange={(e) => setWithdrawalUser(e.target.value)}
               placeholder="0x..."

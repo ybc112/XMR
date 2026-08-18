@@ -32,6 +32,17 @@ function StatCard({ icon, title, value, suffix, loading }) {
   );
 }
 
+function friendlyProcessError(msg) {
+  const m = String(msg || '');
+  if (/管理员钱包未配置/.test(m)) return '后端管理员钱包未配置（服务器缺少 ADMIN_PRIVATE_KEY），无法处理';
+  if (/only ?admin/i.test(m)) return '后端管理员钱包不是合约 admin：请到主站 /admin 页通过多签把后端钱包地址加为管理员';
+  if (/insufficient funds|gas required|underpriced/i.test(m)) return '后端管理员钱包 tBNB 不足，请先给服务器钱包充值 gas';
+  if (/nonce/i.test(m)) return '交易 nonce 冲突，请稍几秒后重试';
+  if (/no pending/i.test(m)) return '该用户链上已无待处理提现，请刷新列表';
+  if (/network|timeout|ETIMEDOUT/i.test(m)) return '区块链网络暂时不可用，请稍后重试';
+  return m;
+}
+
 export default function Dashboard() {
   const { message, modal } = App.useApp();
   const [stats, setStats] = useState(null);
@@ -77,7 +88,7 @@ export default function Dashboard() {
       }
       load();
     } catch (e) {
-      message.error(e.message);
+      message.error(friendlyProcessError(e.message));
     } finally {
       setProcessing('');
     }

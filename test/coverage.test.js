@@ -224,13 +224,13 @@ describe("Coverage Enhancement Tests", function () {
             const root = signers[0];
             const child = signers[1];
             await registerAndInvest(staking, root, ZERO, ethers.parseEther("100"));
-            // 5 claims x 48% (advanceDays(1) = 48 periods) = 240 earned, remaining = 60
-            for (let i = 0; i < 5; i++) {
-                await advanceDays(1);
+            // 10 claims x 20% (advanceDays(20) = 20 periods) = 200 earned, remaining = 100
+            for (let i = 0; i < 10; i++) {
+                await advanceDays(20);
                 await staking.connect(root).claimStaticReward();
             }
             const remaining = await staking.getRemainingExitLimit(root.address);
-            expect(remaining).to.equal(ethers.parseEther("60"));
+            expect(remaining).to.equal(ethers.parseEther("100"));
 
             await registerAndInvest(staking, child, root.address, ethers.parseEther("1000"));
             const afterChild = await staking.getUserInfo(root.address);
@@ -250,8 +250,8 @@ describe("Coverage Enhancement Tests", function () {
         it("Should return 0 estimate for exited user", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            // one max claim reaches the 3x exit limit
-            for (let i = 0; i < 1; i++) {
+            // 10 rounds of advanceDays(30) + claim (30% each) reach the 3x exit limit
+            for (let i = 0; i < 10; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -361,8 +361,8 @@ describe("Coverage Enhancement Tests", function () {
         it("Should handle invest after exit clearing pendingXMR", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
-            // one max claim reaches the 3x exit limit
-            for (let i = 0; i < 1; i++) {
+            // 10 rounds of advanceDays(30) + claim (30% each) reach the 3x exit limit
+            for (let i = 0; i < 10; i++) {
                 await advanceDays(30);
                 await staking.connect(u).claimStaticReward();
             }
@@ -405,8 +405,8 @@ describe("Coverage Enhancement Tests", function () {
             await advanceDays(30);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            // 30 days = 1440 periods x 1% = 14400 -> capped at 3x limit (3000)
-            expect(info.totalEarned).to.equal(ethers.parseEther("3000"));
+            // 30 days = 30 periods (= MAX_CLAIM_PERIODS) x 1% = 30% => 300 USDT (below 3x limit 3000)
+            expect(info.totalEarned).to.equal(ethers.parseEther("300"));
         });
 
         it("Should handle claim with 31 days (capped at 30)", async function () {
@@ -415,8 +415,8 @@ describe("Coverage Enhancement Tests", function () {
             await advanceDays(31);
             await staking.connect(u).claimStaticReward();
             const info = await staking.getUserInfo(u.address);
-            // 31 days = 1488 periods, capped at MAX_CLAIM_PERIODS=1440 -> 3x limit (3000)
-            expect(info.totalEarned).to.equal(ethers.parseEther("3000"));
+            // 31 days = 31 periods, capped at MAX_CLAIM_PERIODS=30 -> 30% => 300 USDT (not 310)
+            expect(info.totalEarned).to.equal(ethers.parseEther("300"));
         });
 
         it("Should handle USDT withdrawal with insufficient contract balance", async function () {

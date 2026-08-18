@@ -48,8 +48,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256 public constant MAX_CLAIM_DAYS = 30;
     uint256 public constant WITHDRAW_UNIT = 10 * 10 ** 18;
     uint256 public constant DAILY_RATE = 100;
-    uint256 public constant SETTLEMENT_INTERVAL = 1800;
-    uint256 public constant SETTLEMENT_ANCHOR = 0;
+    uint256 public constant SETTLEMENT_INTERVAL = 86400;
+    uint256 public constant SETTLEMENT_ANCHOR = 1767240000;
     uint256 public constant MAX_CLAIM_PERIODS = MAX_CLAIM_DAYS * DAY_SECONDS / SETTLEMENT_INTERVAL;
 
     bool public paused;

@@ -7,7 +7,7 @@ describe("StakingDApp", function () {
     let usdt, xmrToken, staking;
 
     const ONE_DAY = 86400;
-    const INTERVAL = 1800;
+    const INTERVAL = 86400;
     const XMR_PRICE = ethers.parseEther("100");
     const MIN_INVESTMENT = ethers.parseEther("100");
     const ZERO = ethers.ZeroAddress;
@@ -107,7 +107,7 @@ describe("StakingDApp", function () {
 
         it("DAILY_RATE is locked to 100 (1%)", async function () {
             expect(await staking.DAILY_RATE()).to.equal(100);
-            expect(await staking.SETTLEMENT_INTERVAL()).to.equal(1800);
+            expect(await staking.SETTLEMENT_INTERVAL()).to.equal(86400);
         });
 
         it("Manual claim after one full period pays full 1% of investment", async function () {
@@ -132,14 +132,14 @@ describe("StakingDApp", function () {
             expect(estAfter.usdtValue).to.equal(0);
         });
 
-        it("48 periods (one real day) equals 48% of investment", async function () {
+        it("One real day (1 period) equals 1% of investment", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(ethers.parseEther("10000"));
 
             await time.increase(ONE_DAY + 1);
 
             const est = await staking.estimateStaticReward(user1.address);
-            expect(est.usdtValue).to.equal(ethers.parseEther("4800"));
+            expect(est.usdtValue).to.equal(ethers.parseEther("100"));
         });
 
         it("Should not allow claim twice in same period", async function () {

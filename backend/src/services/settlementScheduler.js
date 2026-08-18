@@ -1,8 +1,7 @@
 /**
  * 结算调度服务
- * 测试期每 30 分钟自动执行一次 dailySettlement（价格取实时 XMR/USD）
- * 上线后改回每日一次：合约 SETTLEMENT_INTERVAL 改 86400、SETTLEMENT_ANCHOR 改 4*3600，
- * 并将 SETTLEMENT_INTERVAL_MINUTES 调整为对齐北京时间 12:00 的调度
+ * 正式环境：每日北京时间 12:01 自动执行一次 dailySettlement（价格取实时 XMR/USD）
+ * 周期边界由合约 SETTLEMENT_ANCHOR 锚定（= 北京 12:00），本调度器只需在边界后触发即可
  */
 const { ethers } = require("ethers");
 const config = require("../config/env");
@@ -124,8 +123,22 @@ async function runSettlement() {
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * 启动调度
+ * 计算下一次触发时间：北京时间 12:01（UTC 04:01）
+ * 合约周期边界在北京 12:00（SETTLEMENT_ANCHOR 锚定），12:01 触发可确保 currentPeriod 已 +1
+ */
+function nextRunTime() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(4, 1, 0, 0); // UTC 04:01 = 北京 12:01
+  if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+  return next;
+}
+
+/**
+ * 启动调度：首次延迟到下一个北京 12:01，之后每 24 小时执行一次
  */
 function start() {
   if (!config.settlementEnabled) {
@@ -133,20 +146,24 @@ function start() {
     return;
   }
 
-  const intervalMs = Math.max(1, config.settlementIntervalMinutes) * 60 * 1000;
+  const firstRun = nextRunTime();
+  const delayMs = firstRun.getTime() - Date.now();
   logger.info(
-    `自动结算调度已启动，间隔 ${config.settlementIntervalMinutes} 分钟`
+    `自动结算调度已启动，每日北京时间 12:01 执行（首次触发于 ${firstRun.toISOString()}，约 ${Math.round(
+      delayMs / 60000
+    )} 分钟后）`
   );
 
-  runSettlement().catch((err) =>
-    logger.error("启动时自动结算异常:", err.message)
-  );
-
-  timer = setInterval(() => {
+  timer = setTimeout(() => {
     runSettlement().catch((err) =>
       logger.error("定时自动结算异常:", err.message)
     );
-  }, intervalMs);
+    timer = setInterval(() => {
+      runSettlement().catch((err) =>
+        logger.error("定时自动结算异常:", err.message)
+      );
+    }, DAY_MS);
+  }, delayMs);
 }
 
 /**
@@ -154,6 +171,7 @@ function start() {
  */
 function stop() {
   if (timer) {
+    clearTimeout(timer);
     clearInterval(timer);
     timer = null;
     logger.info("自动结算调度已停止");

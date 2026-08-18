@@ -36,3 +36,4 @@ CHANGE-REQUESTS.md
 admin-panel/dist/
 # 后端 SQLite 数据库
 backend/data/
+deploy-state-*.json

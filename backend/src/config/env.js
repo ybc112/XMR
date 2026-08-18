@@ -58,10 +58,11 @@ const config = {
   scanInterval: parseInt(required("SCAN_INTERVAL", "15000"), 10),
   scanBatchSize: parseInt(required("SCAN_BATCH_SIZE", "2000"), 10),
 
-  // 自动结算调度（测试期每 30 分钟一次；上线改回每日 12:00 一次）
+  // 自动结算调度（正式环境：每日北京时间 12:01 自动结算一次）
+  // settlementIntervalMinutes 保留仅为兼容旧配置，实际调度已固定对齐北京 12:01
   settlementEnabled: required("SETTLEMENT_ENABLED", "true") === "true",
   settlementIntervalMinutes: parseInt(
-    required("SETTLEMENT_INTERVAL_MINUTES", "30"),
+    required("SETTLEMENT_INTERVAL_MINUTES", "1440"),
     10
   ),
   settlementPriceUrl: required("SETTLEMENT_PRICE_URL", ""),

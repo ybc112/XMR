@@ -54,12 +54,15 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // 全局速率限制：15 分钟内最多 300 次请求/IP（健康检查跳过）
+// 服务器在 nginx 反代后，直接用连接方 IP 限流；禁用 XFF 校验避免 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path === "/api/health",
+  validate: { xForwardedForHeader: false },
+  keyGenerator: (req) => req.socket.remoteAddress || "unknown",
 });
 app.use(globalLimiter);
 
@@ -69,6 +72,8 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  keyGenerator: (req) => req.socket.remoteAddress || "unknown",
 });
 app.use("/api/auth/login", loginLimiter);
 

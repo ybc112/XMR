@@ -19,7 +19,7 @@ const RECORD_TYPE_MAP = {
   Invested: { label: '投资', direction: 'out', symbol: 'USDT', amountKey: 'amount' },
   StaticRewardClaimed: { label: '静态收益', direction: 'in', symbol: 'XMR', amountKey: 'xmrAmount', noteKey: 'usdtValue', noteSymbol: 'USDT' },
   GenerationReward: { label: '推荐奖', direction: 'in', symbol: 'USDT', amountKey: 'amount' },
-  TeamReward: { label: '团队奖', direction: 'in', symbol: 'XMR', amountKey: 'amount' },
+  TeamReward: { label: '团队奖', direction: 'in', symbol: 'USDT', amountKey: 'amount' },
   FlashExchanged: { label: '闪兑', direction: 'swap', symbol: 'USDT', amountKey: 'usdtAmount', noteKey: 'xmrAmount', noteSymbol: 'XMR' },
   USDTWithdrawn: { label: 'USDT 提现', direction: 'out', symbol: 'USDT', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'USDT' },
   XMRWithdrawalRequested: { label: 'XMR 提现申请', direction: 'out', symbol: 'XMR', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'XMR' },

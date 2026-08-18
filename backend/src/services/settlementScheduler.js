@@ -11,12 +11,12 @@ const blockchain = require("./blockchain");
 let timer = null;
 let running = false;
 
-// Binance 主源（免费稳定，无需 key）；CoinGecko 兜底
+// Gate.io 永续合约主源（服务器可达、XMR 活跃交易；Binance 已下架 XMR 现货不可用）；CoinGecko 兜底
 const PRICE_SOURCES = [
   {
-    name: "binance",
-    url: "https://api.binance.com/api/v3/ticker/price?symbol=XMRUSDT",
-    parse: (body) => Number(body && body.price),
+    name: "gate-futures",
+    url: "https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=XMR_USDT",
+    parse: (body) => (Array.isArray(body) && body[0] ? Number(body[0].last) : NaN),
   },
   {
     name: "coingecko",

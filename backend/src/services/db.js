@@ -76,16 +76,17 @@ logger.info(`SQLite 数据库已连接: ${dbFile}`);
 // ======================== 事件存储 ========================
 
 // 资金方向：out（资金流出用户）/ in（资金流入用户）；FlashExchanged 为 swap（不在 in/out 中）
+// XMRWithdrawalProcessed 对用户是 XMR 到账（转入钱包余额），计为 in
 const OUT_EVENT_TYPES = [
   "Invested",
   "USDTWithdrawn",
   "XMRWithdrawalRequested",
-  "XMRWithdrawalProcessed",
 ];
 const IN_EVENT_TYPES = [
   "StaticRewardClaimed",
   "GenerationReward",
   "TeamReward",
+  "XMRWithdrawalProcessed",
 ];
 
 /**

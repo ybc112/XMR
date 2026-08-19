@@ -22,8 +22,8 @@ export default function Dashboard() {
   const [directCount, setDirectCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const contractStats = await getContractStats()
       setStats(contractStats)
@@ -47,6 +47,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData()
+  }, [loadData])
+
+  // 链上数据自动刷新：20s 轮询 + 页面重新可见时刷新（静默，不显示 loading）
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadData(true)
+    }, 20000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadData(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   }, [loadData])
 
   if (loading) {

@@ -16,6 +16,7 @@ const PAGE_SIZE = 20
 
 // 事件类型 -> 展示信息（label / 方向 / 金额字段 / 币种 / 备注）
 // noteXmr: true 表示主金额为 USDT 价值，附加显示按 XMR 价格换算的 XMR 数量
+// BalanceAdjusted: 币种与方向由事件参数决定（kind: USDT/XMR；delta 正负），在 RecordRow 内动态处理
 const RECORD_TYPE_MAP = {
   Invested: { label: '投资', direction: 'out', symbol: 'USDT', amountKey: 'amount' },
   StaticRewardClaimed: { label: '静态收益', direction: 'in', symbol: 'XMR', amountKey: 'xmrAmount', noteKey: 'usdtValue', noteSymbol: 'USDT' },
@@ -24,7 +25,8 @@ const RECORD_TYPE_MAP = {
   FlashExchanged: { label: '闪兑', direction: 'swap', symbol: 'USDT', amountKey: 'usdtAmount', noteKey: 'xmrAmount', noteSymbol: 'XMR' },
   USDTWithdrawn: { label: 'USDT 提现', direction: 'out', symbol: 'USDT', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'USDT' },
   XMRWithdrawalRequested: { label: 'XMR 提现申请', direction: 'out', symbol: 'XMR', amountKey: 'amount', feeKey: 'fee', feeSymbol: 'XMR' },
-  XMRWithdrawalProcessed: { label: 'XMR 提现到账', direction: 'out', symbol: 'XMR', amountKey: 'amount' }
+  XMRWithdrawalProcessed: { label: 'XMR 提现到账', direction: 'in', symbol: 'XMR', amountKey: 'amount' },
+  BalanceAdjusted: { label: '余额调整', direction: 'swap', symbol: '', amountKey: 'delta' }
 }
 
 function formatTokenAmount(value, decimals = 4) {
@@ -55,8 +57,17 @@ function formatPlainAmount(num, decimals = 6) {
 }
 
 function RecordRow({ record, xmrPrice }) {
-  const meta = RECORD_TYPE_MAP[record.eventType] || { label: record.eventType, direction: 'swap', symbol: '', amountKey: null }
-  const amount = meta.amountKey ? record.args?.[meta.amountKey] : null
+  let meta = RECORD_TYPE_MAP[record.eventType] || { label: record.eventType, direction: 'swap', symbol: '', amountKey: null }
+  let amount = meta.amountKey ? record.args?.[meta.amountKey] : null
+
+  // 余额调整：币种取 kind，方向按 delta 正负，金额取绝对值（符号由方向前缀显示，避免双负号）
+  if (record.eventType === 'BalanceAdjusted') {
+    const raw = amount === null || amount === undefined ? '' : String(amount)
+    const isNeg = raw.startsWith('-')
+    meta = { ...meta, symbol: record.args?.kind || '', direction: isNeg ? 'out' : 'in' }
+    amount = isNeg ? raw.slice(1) : raw
+  }
+
   const fee = meta.feeKey ? record.args?.[meta.feeKey] : null
   const note = meta.noteKey ? record.args?.[meta.noteKey] : null
 

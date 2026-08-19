@@ -684,7 +684,7 @@ router.post(
 );
 
 /**
- * POST /api/admin/users/:address/blacklist - 设置黑名单（admin 直签）
+ * POST /api/admin/users/:address/blacklist - 设置黑名单（onlyOwner，自动走直签或多签）
  * body: { status: boolean }
  */
 router.post(
@@ -698,9 +698,7 @@ router.post(
       return res.status(400).json(errorResponse("status 必须为布尔值"));
     }
 
-    const result = await blockchain.sendAdminTransaction(() =>
-      blockchain.stakingContractWithSigner.setBlacklist(addr, status)
-    );
+    const result = await execOwnerOp("setBlacklist", addr, status);
     logAction(req, {
       action: "set-blacklist",
       target: addr,
@@ -708,9 +706,11 @@ router.post(
       txHash: result.txHash,
     });
 
-    res.json(
-      successResponse(result, `用户 ${addr} 黑名单状态已设置为 ${status}`)
-    );
+    const message =
+      result.mode === "multisig"
+        ? `已提交多签交易 #${result.txId}：setBlacklist，待 ${result.remaining}/${result.required} 确认后执行`
+        : `用户 ${addr} 黑名单状态已设置为 ${status}`;
+    res.json(successResponse(result, message));
   })
 );
 

@@ -5,6 +5,7 @@
 const logger = require("../utils/logger");
 
 // 事件类型 -> 资金方向映射（资金明细页使用）
+// XMRWithdrawalProcessed 对用户是 XMR 到账（转入钱包余额），计为 in
 const FLOW_DIRECTION_MAP = {
   Invested: "out",
   StaticRewardClaimed: "in",
@@ -13,7 +14,7 @@ const FLOW_DIRECTION_MAP = {
   FlashExchanged: "swap",
   USDTWithdrawn: "out",
   XMRWithdrawalRequested: "out",
-  XMRWithdrawalProcessed: "out",
+  XMRWithdrawalProcessed: "in",
 };
 
 // 事件类型 -> 该事件归属用户（收益/操作主体）的字段名

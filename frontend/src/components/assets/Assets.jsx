@@ -65,6 +65,25 @@ export default function Assets() {
     }
   }, [isConnected, account, loadData])
 
+  // 链上数据自动刷新：20s 轮询 + 页面重新可见时刷新
+  // （后台调整余额等多签操作执行后，无需手动刷新即可看到最新数据）
+  useEffect(() => {
+    if (!isConnected || !account) return undefined
+    const timer = setInterval(() => {
+      loadData()
+    }, 20000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [isConnected, account, loadData])
+
   const handleWithdrawUSDT = async () => {
     if (!usdtAmount || parseFloat(usdtAmount) <= 0) {
       showError('请输入提现金额')

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ethers } from 'ethers';
 import {
   App,
   Breadcrumb,
@@ -30,7 +31,7 @@ import {
 import CopyableText, { TxHashLink } from '../components/CopyableText';
 import Money from '../components/Money';
 import { usePanelWallet } from '../context/WalletContext';
-import { STAKING_ABI, sendTx, txErrorMessage } from '../config/contracts';
+import { sendTx, txErrorMessage, STAKING_ABI } from '../config/contracts';
 import {
   eventDirection,
   eventLabel,
@@ -245,6 +246,17 @@ function EventsTab({ address }) {
       align: 'right',
       render: (_, r) => {
         const args = r.args || {};
+        if (r.eventType === 'BalanceAdjusted') {
+          // 调整余额：delta 可正可负（wei 字符串），显示币种标记
+          if (args.delta === undefined || args.delta === null) return '-';
+          const isNeg = String(args.delta).startsWith('-');
+          return (
+            <Space size={4}>
+              <Money value={args.delta} color={isNeg ? '#cf1322' : '#389e0d'} />
+              <Tag style={{ marginRight: 0 }}>{args.kind || '-'}</Tag>
+            </Space>
+          );
+        }
         const amt = args.amount ?? args.xmrAmount ?? args.usdtAmount;
         if (amt === undefined || amt === null) return '-';
         const d = eventDirection(r.eventType);
@@ -255,11 +267,23 @@ function EventsTab({ address }) {
       title: '详情',
       width: 220,
       render: (_, r) => {
+        const args = r.args || {};
         if (r.eventType === 'XMRAddressSet') {
-          const args = r.args || {};
           const addr = args.xmrAddr || args.xmrAddress;
           if (!addr) return '-';
           return <CopyableText text={String(addr)} withTooltip />;
+        }
+        if (r.eventType === 'BalanceAdjusted') {
+          const delta = Number(args.delta);
+          const verb = Number.isFinite(delta) && delta >= 0 ? '增加' : '扣除';
+          return (
+            <Typography.Text type="secondary">
+              后台{verb} {args.kind || '-'}（操作人 {args.operator ? `${String(args.operator).slice(0, 6)}…${String(args.operator).slice(-4)}` : '-'}）
+            </Typography.Text>
+          );
+        }
+        if (r.eventType === 'USDTWithdrawn' && args.fee !== undefined) {
+          return <Typography.Text type="secondary">手续费 <Money value={args.fee} /></Typography.Text>;
         }
         return '-';
       },
@@ -320,10 +344,13 @@ function ActionsTab({ address, detail, onRefresh }) {
     return m;
   };
 
-  const runOp = async (fn, successMsg) => {
+  const runOp = async (fn, successMsg, opts = {}) => {
+    const { requireAdmin = false } = opts;
+    // 直签条件：连接钱包在正确链上，且具备对应链上权限
+    const canDirect = wallet.canSignDirectly && (!requireAdmin || wallet.isContractAdmin);
     setSubmitting(true);
     try {
-      if (wallet.canSignDirectly) {
+      if (canDirect) {
         // 前端直签：小狐狸确认后直接上链
         const staking = await wallet.getStakingWithSigner();
         await fn(staking);
@@ -350,14 +377,20 @@ function ActionsTab({ address, detail, onRefresh }) {
   };
 
   /**
-   * onlyOwner 类操作（调整余额/拉黑/费率/暂停等）：必须走多签。
-   * - 连接了 owner 钱包 → 小狐狸直签多签合约提交交易
+   * onlyOwner 类操作（调整余额/拉黑等）：必须走多签。
+   * - 连接的钱包是合约 owner（EOA）→ 直签立即生效
+   * - 连接的钱包是多签 owner → 小狐狸提交多签交易（需 2/3 确认后生效）
    * - 未连接钱包 → 后端提交多签（需 owner 确认）
    */
   const runOwnerOp = async (getOp, successMsg) => {
     setSubmitting(true);
     try {
-      if (wallet.canSignDirectly) {
+      if (wallet.canSignDirectly && wallet.isContractOwner) {
+        const { fn, args } = getOp(true);
+        const staking = await wallet.getStakingWithSigner();
+        await sendTx(() => staking[fn](...args));
+        message.success(`${successMsg}已直接执行并生效`);
+      } else if (wallet.canSignDirectly) {
         if (!wallet.isMsOwner) {
           throw new Error('该操作仅限多签 owner 执行：请切换到 owner 钱包提交多签，或断开钱包由后端提交（仍需 2/3 owner 确认）。');
         }
@@ -365,14 +398,14 @@ function ActionsTab({ address, detail, onRefresh }) {
         const txId = await wallet.submitMultisigOp(STAKING_ABI, fn, args);
         modal.info({
           title: '已提交多签',
-          content: `${successMsg}已提交多签交易 #${txId}，需 2/3 owner 确认后自动生效。`,
+          content: `${successMsg}已提交多签交易 #${txId}，需 2/3 owner 确认后到「多签管理」执行，执行后链上才生效。`,
         });
       } else {
         const res = await getOp(false);
         if (res && res.mode === 'multisig') {
           modal.info({
             title: '已提交多签',
-            content: `${successMsg}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行。`,
+            content: `${successMsg}已提交多签交易 #${res.txId ?? '-'}，需 2/3 确认后到「多签管理」执行，执行后链上才生效。`,
           });
         } else {
           message.success(successMsg || '操作成功');
@@ -389,18 +422,23 @@ function ActionsTab({ address, detail, onRefresh }) {
   };
 
   const submitBalance = ({ kind, delta }) => {
+    const d = Number(delta);
     modal.confirm({
       title: '确认调整余额',
-      content: `将为用户 ${address} ${delta >= 0 ? '增加' : '减少'} ${Math.abs(delta)} ${kind}（仅限多签 owner 操作），确认提交？`,
+      content: `将为用户 ${address} ${d >= 0 ? '增加' : '减少'} ${Math.abs(d)} ${kind}（仅限多签 owner 操作），确认提交？`,
       onOk: async () => {
+        // 合约 int256 单位为 wei（18 位小数），输入按 ether 处理需转换
+        const deltaInt = d >= 0
+          ? ethers.parseEther(String(Math.abs(d)))
+          : -ethers.parseEther(String(Math.abs(d)));
         const ok = await runOwnerOp(
           (isDirect) =>
             isDirect
               ? {
                   fn: kind === 'USDT' ? 'adjustUserUSDT' : 'adjustUserXMR',
-                  args: [address, BigInt(Math.round(Number(delta)))],
+                  args: [address, deltaInt],
                 }
-              : adjustBalance(address, { kind, delta: Number(delta) }),
+              : adjustBalance(address, { kind, delta: d }),
           '余额调整',
         );
         if (ok) balanceForm.resetFields();
@@ -432,15 +470,24 @@ function ActionsTab({ address, detail, onRefresh }) {
           ? sendTx(() => staking.processXMRWithdrawal(address))
           : processXmrWithdrawal(address),
       'XMR 提现已处理',
+      { requireAdmin: true },
     );
 
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
         {wallet.canSignDirectly ? (
-          <Tag color="blue">钱包直签模式：操作将通过小狐狸签名直接上链</Tag>
+          <Space size={8} wrap>
+            <Tag color="blue">钱包已连接</Tag>
+            {wallet.isContractOwner && <Tag color="green">合约 owner：owner 操作直签立即生效</Tag>}
+            {!wallet.isContractOwner && wallet.isMsOwner && <Tag color="cyan">多签 owner：owner 操作将提交多签（2/3 确认后生效）</Tag>}
+            {wallet.isContractAdmin && <Tag color="geekblue">合约管理员：可直签处理 XMR 提现等操作</Tag>}
+            {!wallet.isContractOwner && !wallet.isMsOwner && !wallet.isContractAdmin && (
+              <Tag color="orange">当前钱包无链上管理权限：owner 操作将提交多签，需 owner 确认</Tag>
+            )}
+          </Space>
         ) : (
-          <Tag color="orange">后端模式：建议点右上角「连接钱包」用小狐狸直接签名</Tag>
+          <Tag color="orange">后端模式：owner 操作由后端提交多签（需 2/3 确认），admin 操作由后端钱包执行</Tag>
         )}
       </div>
       <CardLikeBlock title="调整余额">
@@ -489,7 +536,7 @@ function ActionsTab({ address, detail, onRefresh }) {
         </Space>
       </CardLikeBlock>
 
-      {detail && Number(detail.pendingXMR) > 0 && (
+      {detail && Number(detail.pendingXMR?.formatted || 0) > 0 && (
         <CardLikeBlock title="处理 XMR 提现">
           <Space>
             <Typography.Text>

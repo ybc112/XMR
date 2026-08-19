@@ -16,6 +16,7 @@ export function PanelWalletProvider({ children }) {
   const [connecting, setConnecting] = useState(false);
   const [isContractAdmin, setIsContractAdmin] = useState(false);
   const [isMsOwner, setIsMsOwner] = useState(false);
+  const [isContractOwner, setIsContractOwner] = useState(false);
   const hasWallet = typeof window !== 'undefined' && !!window.ethereum;
 
   const checkIdentity = useCallback(async (addr) => {
@@ -23,15 +24,18 @@ export function PanelWalletProvider({ children }) {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, provider);
       const multisig = new ethers.Contract(MULTISIG_ADDRESS, MULTISIG_ABI, provider);
-      const [adminFlag, msOwnerFlag] = await Promise.all([
+      const [adminFlag, msOwnerFlag, ownerAddr] = await Promise.all([
         staking.admins(addr).catch(() => false),
         multisig.isOwner(addr).catch(() => false),
+        staking.owner().catch(() => null),
       ]);
       setIsContractAdmin(!!adminFlag);
       setIsMsOwner(!!msOwnerFlag);
+      setIsContractOwner(!!ownerAddr && ownerAddr.toLowerCase() === addr.toLowerCase());
     } catch {
       setIsContractAdmin(false);
       setIsMsOwner(false);
+      setIsContractOwner(false);
     }
   }, []);
 
@@ -83,6 +87,7 @@ export function PanelWalletProvider({ children }) {
       } else {
         setIsContractAdmin(false);
         setIsMsOwner(false);
+        setIsContractOwner(false);
       }
     };
     const onChain = (cid) => {
@@ -119,6 +124,7 @@ export function PanelWalletProvider({ children }) {
     setAccount('');
     setIsContractAdmin(false);
     setIsMsOwner(false);
+    setIsContractOwner(false);
   }, []);
 
   const getStakingWithSigner = useCallback(async () => {
@@ -160,6 +166,7 @@ export function PanelWalletProvider({ children }) {
       hasWallet,
       isContractAdmin,
       isMsOwner,
+      isContractOwner,
       connect,
       disconnect,
       getStakingWithSigner,
@@ -167,7 +174,7 @@ export function PanelWalletProvider({ children }) {
       // 连接了钱包且在正确链上 → 操作走前端直签
       canSignDirectly: !!account && chainOk,
     }),
-    [account, chainOk, connecting, hasWallet, isContractAdmin, isMsOwner, connect, disconnect, getStakingWithSigner, submitMultisigOp],
+    [account, chainOk, connecting, hasWallet, isContractAdmin, isMsOwner, isContractOwner, connect, disconnect, getStakingWithSigner, submitMultisigOp],
   );
 
   return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;

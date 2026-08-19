@@ -46,9 +46,10 @@ class MultiRpcProvider extends ethers.JsonRpcProvider {
           msg.includes("timeout") || msg.includes("limit exceeded") ||
           msg.includes("limited to") || msg.includes("is limited") ||
           msg.includes("403") || msg.includes("Forbidden") ||
-          msg.includes("rate limit") || msg.includes("429") ||
+          msg.includes("402") || msg.includes("Payment Required") ||
+          msg.includes("rate limit") || msg.includes("rate-limited") || msg.includes("429") ||
           msg.includes("usage limit") || msg.includes("reached the usage") ||
-          msg.includes("-32001") || msg.includes("quota") ||
+          msg.includes("-32001") || msg.includes("quota") || msg.includes("unusually high traffic") ||
           msg.includes("not supported") || msg.includes("is not supported") ||
           msg.includes("range extends beyond") || msg.includes("missing response");
         if (!retriable) throw e;

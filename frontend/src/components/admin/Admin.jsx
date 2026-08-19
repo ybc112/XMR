@@ -84,6 +84,11 @@ export default function Admin() {
   const [multisigFuncName, setMultisigFuncName] = useState('')
   const [multisigFuncParams, setMultisigFuncParams] = useState('')
 
+  // 多签列表分页
+  const PAGE_SIZE = 10
+  const [page, setPage] = useState(0)
+  const totalPages = Math.max(1, Math.ceil(multisigTxList.length / PAGE_SIZE))
+
   // 用户管理
   const [manageAddr, setManageAddr] = useState('')
   const [managedUser, setManagedUser] = useState(null)
@@ -105,7 +110,7 @@ export default function Admin() {
       setIsCurrentOwner(ownerStatus)
 
       const txs = []
-      const maxLoad = Math.min(count, 20)
+      const maxLoad = Math.min(count, 100)
       for (let i = 0; i < maxLoad; i++) {
         const tx = await getTransaction(i)
         if (tx) {
@@ -113,6 +118,8 @@ export default function Admin() {
         }
       }
       setMultisigTxList(txs)
+      // 加载更多交易后，重置到第 1 页
+      setPage(0)
 
       if (account && txs.length > 0) {
         const flags = await Promise.all(
@@ -1010,6 +1017,7 @@ export default function Admin() {
             <p>暂无多签交易</p>
           </div>
         ) : (
+          <>
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -1025,8 +1033,9 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {multisigTxList.map((tx, idx) => {
-                  const myConfirmed = confirmedByMe[idx] === true
+                {multisigTxList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((tx, idx) => {
+                  const globalIdx = page * PAGE_SIZE + idx
+                  const myConfirmed = confirmedByMe[globalIdx] === true
                   const canExecute = !tx.executed && tx.confirmCount >= requiredConfirm
                   return (
                     <tr key={tx.id} className={canExecute ? 'row-highlight' : ''}>
@@ -1087,6 +1096,28 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
+          <div className="multisig-pagination">
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              上一页
+            </Button>
+            <span className="pagination-info">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, multisigTxList.length)} / {multisigTxList.length}
+            </span>
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              下一页
+            </Button>
+          </div>
+          </>
         )}
       </Card>
     </div>

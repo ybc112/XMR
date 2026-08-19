@@ -10,6 +10,7 @@ const db = require("./db");
 const {
   stakingContract,
   provider,
+  scanProvider,
 } = require("./blockchain");
 
 // 事件类型 -> 缓存分类映射
@@ -98,7 +99,7 @@ async function scanBlockRange(fromBlock, toBlock) {
   let rawLogs;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      rawLogs = await provider.getLogs({
+      rawLogs = await scanProvider.getLogs({
         address: config.stakingContractAddress,
         fromBlock,
         toBlock,
@@ -188,7 +189,7 @@ async function backfillBlockTimestamps(events) {
     const fetched = await Promise.all(
       chunk.map(async (blockNumber) => {
         try {
-          const block = await provider.getBlock(blockNumber);
+          const block = await scanProvider.getBlock(blockNumber);
           return block ? [blockNumber, Number(block.timestamp)] : null;
         } catch {
           return null; // 拉取失败跳过该区块
@@ -219,7 +220,7 @@ async function performScan() {
   isScanning = true;
 
   try {
-    const latestBlock = await provider.getBlockNumber();
+    const latestBlock = await scanProvider.getBlockNumber();
 
     // 扫描起点优先级：内存缓存 > 数据库 scan_state > 配置起始区块
     let lastScanned = cache.getLastScannedBlock();

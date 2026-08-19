@@ -30,11 +30,17 @@ class MultiRpcProvider extends ethers.JsonRpcProvider {
   }
   async send(method, params) {
     let lastErr;
-    const retries = this.urls.length * 2; // 每节点最多尝试 2 次
+    const retries = this.urls.length; // 每个节点尝试 1 次后切下一个
     for (let i = 0; i < retries; i++) {
       try {
         this.urlIdx++;
-        const res = await super.send(method, params);
+        // 每节点请求超时控制（公共节点常挂起，避免整轮卡死）
+        const res = await Promise.race([
+          super.send(method, params),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`request timeout on ${this.urls[this.urlIdx % this.urls.length]}`)), this.timeoutMs || 10000)
+          ),
+        ]);
         return res;
       } catch (e) {
         lastErr = e;
@@ -60,18 +66,45 @@ class MultiRpcProvider extends ethers.JsonRpcProvider {
   }
 }
 
+/**
+ * 创建多节点轮询 Provider
+ * @param {string[]} urls 节点列表（按优先级）
+ * @param {number} timeoutMs 每节点请求超时（毫秒）
+ */
+function createMultiProvider(urls, timeoutMs) {
+  const p = new MultiRpcProvider(
+    urls,
+    {
+      chainId: config.chainId,
+      name: config.chainId === 97 ? "bsc-testnet" : "bsc",
+    },
+    { staticNetwork: true }
+  );
+  if (timeoutMs) p.timeoutMs = timeoutMs;
+  return p;
+}
+
 // 创建多节点轮询 Provider（BSC_RPC_URL 支持逗号分隔多节点）
 const rpcUrls = (config.bscRpcUrl || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-const provider = new MultiRpcProvider(
+const provider = createMultiProvider(
   rpcUrls.length > 0 ? rpcUrls : ["https://bsc-dataseed.bnbchain.org"],
-  {
-    chainId: config.chainId,
-    name: config.chainId === 97 ? "bsc-testnet" : "bsc",
-  },
-  { staticNetwork: true }
+  12000
+);
+
+/**
+ * 事件扫描专用 Provider：仅用支持 eth_getLogs 的节点（tatum/nodereal/blastapi），
+ * 避免 getLogs 在 dataseed（范围限制）等节点上空转超时
+ */
+const scanProvider = createMultiProvider(
+  [
+    "https://bsc-mainnet.gateway.tatum.io",
+    "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
+    "https://bsc-mainnet.public.blastapi.io",
+  ],
+  8000
 );
 
 // 带超时的合约调用辅助函数
@@ -410,6 +443,7 @@ async function sendAdminTransaction(txFn) {
 
 module.exports = {
   provider,
+  scanProvider,
   adminWallet,
   stakingContract,
   stakingContractWithSigner,

@@ -162,7 +162,8 @@ function nextRunTime() {
 }
 
 /**
- * 启动调度：首次延迟到下一个北京 12:01，之后每 24 小时执行一次
+ * 启动调度：启动时立即尝试一次结算（服务重启后补结算，若当前周期已结算则自动跳过），
+ * 之后首次延迟到下一个北京 12:01，再每 24 小时执行一次
  */
 function start() {
   if (!config.settlementEnabled) {
@@ -170,10 +171,15 @@ function start() {
     return;
   }
 
+  // 立即补结算：runSettlement 内部有 currentPeriod <= lastSettlementPeriod 检查，重复执行安全
+  runSettlement().catch((err) =>
+    logger.error("启动时自动结算异常:", err.message)
+  );
+
   const firstRun = nextRunTime();
   const delayMs = firstRun.getTime() - Date.now();
   logger.info(
-    `自动结算调度已启动，每日北京时间 12:01 执行（首次触发于 ${firstRun.toISOString()}，约 ${Math.round(
+    `自动结算调度已启动，每日北京时间 12:01 执行（下次定时触发于 ${firstRun.toISOString()}，约 ${Math.round(
       delayMs / 60000
     )} 分钟后）`
   );

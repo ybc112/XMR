@@ -12,7 +12,10 @@
       "Bash(grep -n -B2 -A 12 'successResponse\\({\\\\s*$' backend/src/routes/adminUsers.js)",
       "Bash(npm run *)",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\);const{ethers}=require\\('ethers'\\);console.log\\('deployer:', new ethers.Wallet\\(process.env.PRIVATE_KEY\\).address\\)\")",
-      "Bash(node -e \"require\\('dotenv'\\).config\\({path:'backend/.env'}\\);const{ethers}=require\\('ethers'\\);console.log\\('backend admin:', new ethers.Wallet\\(process.env.ADMIN_PRIVATE_KEY\\).address\\)\")"
+      "Bash(node -e \"require\\('dotenv'\\).config\\({path:'backend/.env'}\\);const{ethers}=require\\('ethers'\\);console.log\\('backend admin:', new ethers.Wallet\\(process.env.ADMIN_PRIVATE_KEY\\).address\\)\")",
+      "Bash(date -u)",
+      "Bash(export SSHPASS='Ybc20031213.')",
+      "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@36.151.145.15 'pm2 logs xmr-backend --lines 20 --nostream 2>/dev/null | grep -vE \"开始扫描|扫描完成\" | tail -15')"
     ]
   }
 }

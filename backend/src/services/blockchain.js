@@ -12,13 +12,62 @@ const {
 } = require("../config/abis");
 const logger = require("../utils/logger");
 
-// 创建 JsonRpcProvider（只读）
-const provider = new ethers.JsonRpcProvider(config.bscRpcUrl, {
-  chainId: config.chainId,
-  name: config.chainId === 97 ? "bsc-testnet" : "bsc",
-}, {
-  staticNetwork: true,
-});
+/**
+ * 多节点轮询 Provider：单节点限流/故障时自动切换下一个 RPC
+ * BSC 公共节点对 eth_getLogs 等均有各自限制（dataseed 范围限制、publicnode 免费额度、1rpc 50 块），
+ * 单节点不可靠，必须轮询。
+ */
+class MultiRpcProvider extends ethers.JsonRpcProvider {
+  constructor(urls, network, options) {
+    super(urls[0], network, options);
+    this.urls = urls;
+    this.urlIdx = 0;
+  }
+  _getConnection() {
+    const conn = super._getConnection();
+    conn.url = this.urls[this.urlIdx % this.urls.length];
+    return conn;
+  }
+  async send(method, params) {
+    let lastErr;
+    const retries = this.urls.length * 2; // 每节点最多尝试 2 次
+    for (let i = 0; i < retries; i++) {
+      try {
+        this.urlIdx++;
+        const res = await super.send(method, params);
+        return res;
+      } catch (e) {
+        lastErr = e;
+        const msg = String(e.message || e.code || "");
+        // nonce 冲突不应重试（会带着错误 nonce 一直撞）
+        if (msg.includes("nonce has already been used") || msg.includes("nonce too low")) throw e;
+        const retriable =
+          e.code === "ETIMEDOUT" || e.code === "ECONNRESET" || e.code === "SERVER_ERROR" ||
+          msg.includes("timeout") || msg.includes("limit exceeded") ||
+          msg.includes("403") || msg.includes("Forbidden") ||
+          msg.includes("rate limit") || msg.includes("429") ||
+          msg.includes("range extends beyond");
+        if (!retriable) throw e;
+        logger.warn(`RPC ${this.urls[this.urlIdx % this.urls.length]} 失败(${msg.slice(0, 60)}), 切换节点重试`);
+      }
+    }
+    throw lastErr;
+  }
+}
+
+// 创建多节点轮询 Provider（BSC_RPC_URL 支持逗号分隔多节点）
+const rpcUrls = (config.bscRpcUrl || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const provider = new MultiRpcProvider(
+  rpcUrls.length > 0 ? rpcUrls : ["https://bsc-dataseed.bnbchain.org"],
+  {
+    chainId: config.chainId,
+    name: config.chainId === 97 ? "bsc-testnet" : "bsc",
+  },
+  { staticNetwork: true }
+);
 
 // 带超时的合约调用辅助函数
 async function withTimeout(promise, ms = 10000, label = "contract call") {

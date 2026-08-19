@@ -44,6 +44,7 @@ class MultiRpcProvider extends ethers.JsonRpcProvider {
         const retriable =
           e.code === "ETIMEDOUT" || e.code === "ECONNRESET" || e.code === "SERVER_ERROR" ||
           msg.includes("timeout") || msg.includes("limit exceeded") ||
+          msg.includes("limited to") || msg.includes("is limited") ||
           msg.includes("403") || msg.includes("Forbidden") ||
           msg.includes("rate limit") || msg.includes("429") ||
           msg.includes("range extends beyond");

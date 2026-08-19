@@ -56,7 +56,8 @@ const config = {
   // 事件扫描配置
   startBlock: parseInt(required("START_BLOCK", "0"), 10),
   scanInterval: parseInt(required("SCAN_INTERVAL", "15000"), 10),
-  scanBatchSize: parseInt(required("SCAN_BATCH_SIZE", "2000"), 10),
+  // 50 块兼容所有公共 RPC 节点（1rpc 限 50 块、dataseed 范围限制、publicnode 限流）
+  scanBatchSize: parseInt(required("SCAN_BATCH_SIZE", "50"), 10),
 
   // 自动结算调度（正式环境：每日北京时间 12:01 自动结算一次）
   // settlementIntervalMinutes 保留仅为兼容旧配置，实际调度已固定对齐北京 12:01

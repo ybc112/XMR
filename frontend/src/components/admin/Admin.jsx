@@ -109,14 +109,17 @@ export default function Admin() {
       setOwners(ownerList)
       setIsCurrentOwner(ownerStatus)
 
+      // 最多加载 100 笔，但取「最新」的 100 笔（txId 从 count-1 往前），避免最早的交易挤掉最新交易
       const txs = []
       const maxLoad = Math.min(count, 100)
-      for (let i = 0; i < maxLoad; i++) {
+      for (let i = count - maxLoad; i < count; i++) {
         const tx = await getTransaction(i)
         if (tx) {
           txs.push({ id: i, ...tx })
         }
       }
+      // 按 txId 倒序展示（最新的在最上面）
+      txs.sort((a, b) => b.id - a.id)
       setMultisigTxList(txs)
       // 加载更多交易后，重置到第 1 页
       setPage(0)

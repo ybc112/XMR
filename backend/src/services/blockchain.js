@@ -57,7 +57,8 @@ class MultiRpcProvider extends ethers.JsonRpcProvider {
           msg.includes("usage limit") || msg.includes("reached the usage") ||
           msg.includes("-32001") || msg.includes("quota") || msg.includes("unusually high traffic") ||
           msg.includes("not supported") || msg.includes("is not supported") ||
-          msg.includes("range extends beyond") || msg.includes("missing response");
+          msg.includes("range extends beyond") || msg.includes("missing response") ||
+          msg.includes("missing revert data") || msg.includes("CALL_EXCEPTION");
         if (!retriable) throw e;
         logger.warn(`RPC ${this.urls[this.urlIdx % this.urls.length]} 失败(${msg.slice(0, 60)}), 切换节点重试`);
       }

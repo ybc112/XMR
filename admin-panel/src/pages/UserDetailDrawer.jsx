@@ -672,6 +672,14 @@ export default function UserDetailDrawer({ address, open, onClose, onSwitchUser 
           <Descriptions.Item label="直推数量">
             <span className="mono">{d.directReferralCount ?? '-'}</span>
           </Descriptions.Item>
+          <Descriptions.Item label="今日新增业绩">
+            <Space size={6}>
+              <Money value={d.todayInvested} color={Number(d.todayInvested) > 0 ? '#389e0d' : undefined} />
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                （北京时间当天新增投资）
+              </Typography.Text>
+            </Space>
+          </Descriptions.Item>
         </Descriptions>
       ),
     },

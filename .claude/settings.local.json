@@ -17,7 +17,8 @@
       "Bash(export SSHPASS='Ybc20031213.')",
       "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@36.151.145.15 'pm2 logs xmr-backend --lines 20 --nostream 2>/dev/null | grep -vE \"开始扫描|扫描完成\" | tail -15')",
       "Bash(export SSHPASS='dp4fL26QcZYD')",
-      "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -p 54470 root@38.190.206.234 'date -u; echo \"=== 自动结算日志 ===\"; grep -E \"自动结算\" /root/.pm2/logs/xmr-backend-out.log /root/.pm2/logs/xmr-backend-error.log 2>/dev/null | tail -6; echo \"=== 调度器运行状态 ===\"; pm2 ls | grep xmr-backend')"
+      "Bash(sshpass -e ssh -o StrictHostKeyChecking=no -p 54470 root@38.190.206.234 'date -u; echo \"=== 自动结算日志 ===\"; grep -E \"自动结算\" /root/.pm2/logs/xmr-backend-out.log /root/.pm2/logs/xmr-backend-error.log 2>/dev/null | tail -6; echo \"=== 调度器运行状态 ===\"; pm2 ls | grep xmr-backend')",
+      "Bash(grep -n \"router.get\\(\\\\s*$\\\\|router.get\\(\\\\\"/users/:address\\\\\"\" -A 3 backend/src/routes/adminUsers.js)"
     ]
   }
 }

@@ -307,9 +307,21 @@ function getTodayStats(startOfTodaySec) {
   return { todayNewUsers, todayInvestedAmount, todayWithdrawnAmount };
 }
 
-/** 时间区间内 Invested 总额（wei 字符串，闭区间） */
-function sumInvestedBetween(fromTs, toTs) {
+/**
+ * 单个用户在 sinceTs 之后的新增投资额（新增业绩，wei 字符串）
+ * @param {string} address 用户地址
+ * @param {number} sinceTs 起始秒级时间戳
+ */
+function sumUserInvestedSince(address, sinceTs) {
   return sumAmounts(
+    "SELECT argsJson FROM events WHERE eventType = 'Invested' AND LOWER(userAddress) = LOWER(?) AND timestamp >= ?",
+    address,
+    sinceTs
+  );
+}
+
+/** 时间区间内 Invested 总额（wei 字符串，闭区间） */
+function sumInvestedBetween(fromTs, toTs) {  return sumAmounts(
     "SELECT argsJson FROM events WHERE eventType = 'Invested' AND timestamp >= ? AND timestamp <= ?",
     fromTs,
     toTs
@@ -478,6 +490,7 @@ module.exports = {
   countRegistered,
   getTodayStats,
   sumInvestedBetween,
+  sumUserInvestedSince,
   getAllUserAddresses,
   setScanState,
   getScanState,

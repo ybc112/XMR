@@ -17,6 +17,7 @@ const {
   errorResponse,
 } = require("../middleware/errorHandler");
 const { parsePagination, buildPagination } = require("../utils/formatter");
+const { startOfBeijingTodaySec } = require("../utils/time");
 
 // 所有路由需要管理员认证
 router.use(adminAuth);
@@ -66,6 +67,16 @@ function resolveAddress(req, res) {
 
 /** 由注册事件行 + 链上 userInfo 构建用户列表项 */
 function buildUserItem(reg, info, power, remark) {
+  // 今日新增业绩（北京时间当天的 Invested 累计），链上无此数据，取自本地事件库
+  let todayInvested = "0";
+  try {
+    todayInvested = ethers.formatEther(
+      BigInt(db.sumUserInvestedSince(reg.address, startOfBeijingTodaySec()) || "0")
+    );
+  } catch {
+    /* 忽略统计失败，保持 0 */
+  }
+
   return {
     address: reg.address,
     memberId: reg.memberId,
@@ -82,6 +93,7 @@ function buildUserItem(reg, info, power, remark) {
     exited: info ? info.exited : null,
     isBlacklisted: info ? info.isBlacklisted : null,
     userComputingPower: power,
+    todayInvested,
     remark: remark || "",
   };
 }
@@ -253,9 +265,8 @@ async function execOwnerOp(fnName, ...args) {
 router.get(
   "/stats",
   asyncHandler(async (req, res) => {
-    const startOfTodaySec = Math.floor(
-      new Date().setHours(0, 0, 0, 0) / 1000
-    );
+    // 「今日」以北京时间 00:00 为界（服务器时区为 UTC，直接用本地零点会偏移 8 小时）
+    const startOfTodaySec = startOfBeijingTodaySec();
 
     const [stats, pendingXMRList, recentRegistrations, recentInvestments] =
       await Promise.all([
@@ -469,6 +480,16 @@ router.get(
       /* 忽略 */
     }
 
+    // 今日新增业绩（北京时间当天的 Invested 累计，取自本地事件库）
+    let todayInvested = "0";
+    try {
+      todayInvested = ethers.formatEther(
+        BigInt(db.sumUserInvestedSince(addr, startOfBeijingTodaySec()) || "0")
+      );
+    } catch {
+      /* 忽略统计失败，保持 0 */
+    }
+
     res.json(
       successResponse({
         ...info,
@@ -476,6 +497,7 @@ router.get(
         userComputingPower: power,
         remainingExitLimit,
         subAreaVolume,
+        todayInvested,
         directReferralCount:
           referralCount !== null ? referralCount.toString() : null,
         referrerChain,

@@ -3,6 +3,9 @@ import axios from 'axios';
 const TOKEN_KEY = 'xmr_admin_token';
 const USER_KEY = 'xmr_admin_user';
 
+// 后台子路径（与 App.jsx 路由 basename 一致）：主网默认 /panel，测试网用 VITE_ADMIN_BASE 覆盖
+const ADMIN_BASE = import.meta.env.VITE_ADMIN_BASE || '/panel';
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -43,8 +46,8 @@ client.interceptors.response.use(
   (err) => {
     if (err.response && err.response.status === 401) {
       clearAuth();
-      if (!window.location.pathname.startsWith('/panel/login')) {
-        window.location.replace('/panel/login');
+      if (!window.location.pathname.startsWith(`${ADMIN_BASE}/login`)) {
+        window.location.replace(`${ADMIN_BASE}/login`);
       }
     }
     const msg =

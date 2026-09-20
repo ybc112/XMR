@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// 后台路由 basename：主网默认 /panel；测试网子路径部署用 VITE_ADMIN_BASE 覆盖（如 /testnet/panel）
+const ADMIN_BASE = import.meta.env.VITE_ADMIN_BASE || '/panel';
 import { Spin } from 'antd';
 import ProtectedRoute from './components/ProtectedRoute';
 import BasicLayout from './components/BasicLayout';
@@ -23,7 +26,7 @@ function PageLoading() {
 export default function App() {
   return (
     <PanelWalletProvider>
-      <BrowserRouter basename="/panel">
+      <BrowserRouter basename={ADMIN_BASE}>
         <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/login" element={<Login />} />

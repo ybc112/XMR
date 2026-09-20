@@ -34,6 +34,23 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         uint256 teamRate;
     }
 
+    /// 独立仓位：每次投资生成一个，各自记账、各自 3 倍出局
+    struct Position {
+        uint256 principal;        // 该仓位本金（≥100 且为 100 的整数倍）
+        uint256 earned;           // 该仓位累计已赚（静态 + 动态，统一计入）
+        uint256 lastClaimPeriod;  // 该仓位最后结算周期（补投时间不同，各自独立计算）
+        bool closed;              // 是否已拿满 3 倍（停止产生收益）
+    }
+
+    struct PositionInfoView {
+        uint256 principal;
+        uint256 earned;
+        uint256 lastClaimPeriod;
+        bool closed;
+        uint256 capacity;   // principal × 3
+        uint256 remaining;  // capacity - earned
+    }
+
     IERC20 public usdtToken;
     XMRToken public xmrToken;
 
@@ -51,6 +68,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256 public constant SETTLEMENT_INTERVAL = 86400;
     uint256 public constant SETTLEMENT_ANCHOR = 1767240000;
     uint256 public constant MAX_CLAIM_PERIODS = MAX_CLAIM_DAYS * DAY_SECONDS / SETTLEMENT_INTERVAL;
+    /// 单账号最多仓位数量（超过后先清理已关闭仓位，仍满则拒绝新仓位）
+    uint256 public constant MAX_POSITIONS = 20;
 
     bool public paused;
 
@@ -58,6 +77,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256[12] public generationRates;
 
     mapping(address => User) public users;
+    /// 用户仓位列表，按投资时间顺序排列（invest / 收益 FIFO 填充 / 迁移导入使用）
+    mapping(address => Position[]) internal positions;
     mapping(address => address[]) public directReferrals;
     mapping(address => mapping(address => uint256)) public directReferralVolume;
     mapping(address => bool) public admins;
@@ -68,6 +89,10 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     address[] private userList;
     uint256 public nextMemberId = 10001;
     uint256 public lastSettlementPeriod;
+    /// 分页结算：本轮已处理到的用户索引（新周期自动归零）
+    uint256 public settlementCursor;
+    /// 分页结算每批用户数
+    uint256 public settlementBatchSize = 50;
     uint256 public totalUSDTDeposited;
     uint256 public totalUsers;
 
@@ -91,6 +116,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     event LevelUpdated(address indexed user, uint8 oldLevel, uint8 newLevel);
     event XMRAddressSet(address indexed user, string xmrAddr);
     event BalanceAdjusted(address indexed user, string kind, int256 delta, address operator);
+    /// 单仓位拿满 3 倍出局
+    event PositionClosed(address indexed user, uint256 index, uint256 principal, uint256 earned);
 
     constructor(address _usdt, address _xmr) Ownable(msg.sender) {
         usdtToken = IERC20(_usdt);
@@ -159,6 +186,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         emit Registered(msg.sender, _referrer, memberId);
     }
 
+    /// 投资：每次调用生成一个**独立仓位**（不再合并本金），各自 3 倍出局
     function invest(uint256 _amount) external nonReentrant notPaused notBlacklisted {
         require(_amount >= MIN_INVESTMENT, "Investment below 100 USDT");
         require(_amount % MIN_INVESTMENT == 0, "Investment must be multiple of 100");
@@ -166,18 +194,21 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
         User storage user = users[msg.sender];
 
-        if (user.exited) {
-            user.personalAmount = _amount;
-            user.totalEarned = 0;
-            user.pendingUSDT = 0;
-            user.pendingXMR = 0;
-            user.xmrWithdrawalPending = 0;
-            user.lastClaimDay = _currentPeriod();
-            user.exited = false;
-        } else {
-            user.personalAmount += _amount;
-        }
+        _compactClosedPositions(msg.sender);
+        require(positions[msg.sender].length < MAX_POSITIONS, "Too many positions");
+
+        positions[msg.sender].push(Position({
+            principal: _amount,
+            earned: 0,
+            lastClaimPeriod: _currentPeriod(),
+            closed: false
+        }));
+
+        // 出局后复投：历史仓位保留、未提取余额保留，账号重新激活
+        user.exited = false;
+        user.personalAmount += _amount;
         user.exitLimit = user.personalAmount * EXIT_MULTIPLIER;
+        user.lastClaimDay = _currentPeriod();
 
         usdtToken.safeTransferFrom(msg.sender, address(this), _amount);
         totalUSDTDeposited += _amount;
@@ -261,24 +292,35 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         emit XMRWithdrawalRequested(msg.sender, actual, fee, xmrAddress[msg.sender]);
     }
 
+    /// 分页结算：每笔交易只处理 settlementBatchSize 个用户；新周期自动重置游标并更新价格
+    /// 后端需循环调用直到 settlementCursor >= getUserCount()
     function dailySettlement(uint256 _xmrPrice) external onlyAdmin nonReentrant {
         require(_xmrPrice > 0, "Price must be > 0");
         uint256 currentPeriod = _currentPeriod();
-        require(currentPeriod > lastSettlementPeriod, "Already settled this period");
-
-        lastSettlementPeriod = currentPeriod;
-        xmrPrice = _xmrPrice;
-
-        uint256 count = userList.length;
-        for (uint256 i = 0; i < count; i++) {
-            _settleUser(userList[i], currentPeriod);
+        if (currentPeriod > lastSettlementPeriod) {
+            lastSettlementPeriod = currentPeriod;
+            settlementCursor = 0;
+            xmrPrice = _xmrPrice;
         }
 
-        emit DailySettlement(currentPeriod, _xmrPrice);
+        uint256 end = settlementCursor + settlementBatchSize;
+        if (end > userList.length) end = userList.length;
+        for (uint256 i = settlementCursor; i < end; i++) {
+            _settleUser(userList[i], currentPeriod);
+        }
+        settlementCursor = end;
+
+        emit DailySettlement(currentPeriod, xmrPrice);
     }
 
     function getUserCount() external view returns (uint256) {
         return userList.length;
+    }
+
+    /// 分页批次大小可调（仅 owner）
+    function setSettlementBatchSize(uint256 _size) external onlyOwner {
+        require(_size > 0 && _size <= 200, "Invalid batch size");
+        settlementBatchSize = _size;
     }
 
     function _currentPeriod() internal view returns (uint256) {
@@ -287,37 +329,58 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             : 0;
     }
 
+    /// 多仓位静态收益结算：每个未关闭仓位独立累计（principal × 1%/周期），各自封顶 3 倍本金
     function _settleUser(address _user, uint256 _targetPeriod) internal {
         User storage user = users[_user];
-        if (user.exited || user.isBlacklisted || user.personalAmount < MIN_INVESTMENT) return;
-        if (_targetPeriod <= user.lastClaimDay || xmrPrice == 0) return;
+        if (user.isBlacklisted || user.exited || xmrPrice == 0) return;
 
-        uint256 periodsPassed = _targetPeriod - user.lastClaimDay;
-        if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
+        Position[] storage posList = positions[_user];
+        uint256 totalReward = 0;
+        bool anySettled = false;
 
-        uint256 usdtReward = user.personalAmount * DAILY_RATE * periodsPassed / 10000;
+        for (uint256 i = 0; i < posList.length; i++) {
+            Position storage pos = posList[i];
+            if (pos.closed) continue;
+            if (_targetPeriod <= pos.lastClaimPeriod) continue;
 
-        uint256 cappedReward = _applyExitLimit(_user, usdtReward);
-        if (cappedReward == 0) return;
+            uint256 periodsPassed = _targetPeriod - pos.lastClaimPeriod;
+            if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
 
-        user.lastClaimDay = _targetPeriod;
-
-        uint256 xmrReward = cappedReward * 10 ** 18 / xmrPrice;
-        if (xmrReward > 0) {
-            xmrToken.mint(address(this), xmrReward);
-            user.pendingXMR += xmrReward;
+            uint256 usdtReward = pos.principal * DAILY_RATE * periodsPassed / 10000;
+            uint256 cap = pos.principal * EXIT_MULTIPLIER;
+            uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
+            if (remaining > 0) {
+                uint256 actual = usdtReward > remaining ? remaining : usdtReward;
+                if (actual > 0) {
+                    pos.earned += actual;
+                    totalReward += actual;
+                }
+            }
+            pos.lastClaimPeriod = _targetPeriod;
+            if (pos.earned >= cap) {
+                pos.closed = true;
+                emit PositionClosed(_user, i, pos.principal, pos.earned);
+            }
+            anySettled = true;
         }
 
-        user.totalEarned += cappedReward;
+        if (anySettled) user.lastClaimDay = _targetPeriod;
 
-        _distributeTeamRewards(_user, cappedReward);
+        if (totalReward > 0) {
+            uint256 xmrReward = totalReward * 10 ** 18 / xmrPrice;
+            if (xmrReward > 0) {
+                xmrToken.mint(address(this), xmrReward);
+                user.pendingXMR += xmrReward;
+            }
 
-        emit StaticRewardClaimed(_user, cappedReward, xmrReward);
+            user.totalEarned += totalReward;
 
-        if (user.totalEarned >= user.exitLimit) {
-            user.exited = true;
-            emit Exited(_user, user.totalEarned);
+            _distributeTeamRewards(_user, totalReward);
+
+            emit StaticRewardClaimed(_user, totalReward, xmrReward);
         }
+
+        _checkAccountExit(_user);
     }
 
     function setXMRPrice(uint256 _price) external onlyAdmin {
@@ -424,6 +487,175 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         IERC20(_token).safeTransfer(_to, _amount);
     }
 
+    /// 迁移导入（多仓位版）：支持每个用户多个仓位（扁平化编码）
+    /// _principals / _earneds 按用户依次展开：前 _userPosCounts[0] 个属于第 1 个用户，以此类推
+    function batchImportPositions(
+        address[] calldata _users,
+        address[] calldata _referrers,
+        uint256[] calldata _userPosCounts,
+        uint256[] calldata _principals,
+        uint256[] calldata _earneds,
+        uint256[] calldata _pendingUSDTs,
+        uint256[] calldata _pendingXMRs
+    ) external onlyOwner {
+        uint256 n = _users.length;
+        require(n > 0 && n <= 100, "Batch must be 1-100 users");
+        require(_referrers.length == n, "Referrers length mismatch");
+        require(_userPosCounts.length == n, "Counts length mismatch");
+        require(_pendingUSDTs.length == n, "USDT length mismatch");
+        require(_pendingXMRs.length == n, "XMR length mismatch");
+
+        uint256 idx = 0;
+        for (uint256 i = 0; i < n; i++) {
+            address user = _users[i];
+            require(_userPosCounts[i] >= 1 && _userPosCounts[i] <= MAX_POSITIONS, "Invalid position count");
+            require(positions[user].length + _userPosCounts[i] <= MAX_POSITIONS, "Exceeds position limit");
+
+            User storage u = users[user];
+            if (!u.isRegistered) {
+                _importRegister(user, _referrers[i]);
+            } else {
+                require(_referrers[i] == address(0) || _referrers[i] == u.referrer, "Referrer mismatch");
+            }
+
+            uint256 totalPrincipal = 0;
+            for (uint256 k = 0; k < _userPosCounts[i]; k++) {
+                require(idx < _principals.length, "Principals length mismatch");
+                uint256 principal = _principals[idx];
+                uint256 earned = _earneds[idx];
+                idx++;
+                require(principal > 0, "Zero principal");
+
+                bool closed = earned >= principal * EXIT_MULTIPLIER;
+                positions[user].push(Position({
+                    principal: principal,
+                    earned: earned,
+                    lastClaimPeriod: _currentPeriod(),
+                    closed: closed
+                }));
+
+                totalPrincipal += principal;
+                u.personalAmount += principal;
+                u.totalEarned += earned;
+            }
+            if (idx > _earneds.length) revert("Earneds length mismatch");
+
+            u.exitLimit = u.personalAmount * EXIT_MULTIPLIER;
+            u.lastClaimDay = _currentPeriod();
+
+            if (totalPrincipal > 0) {
+                _updateTeamVolumesAndLevels(user, totalPrincipal);
+            }
+            _checkAndSetLevel(user);
+
+            if (_pendingUSDTs[i] > 0) u.pendingUSDT += _pendingUSDTs[i];
+            if (_pendingXMRs[i] > 0) {
+                xmrToken.mint(address(this), _pendingXMRs[i]);
+                u.pendingXMR += _pendingXMRs[i];
+            }
+
+            _checkAccountExit(user);
+        }
+        require(idx == _principals.length, "Principals length mismatch (trailing)");
+        require(idx == _earneds.length, "Earneds length mismatch (trailing)");
+    }
+
+    /// 迁移注册（与 register 等价，供导入使用）
+    function _importRegister(address _user, address _referrer) internal {
+        require(!users[_user].isRegistered, "Already registered");
+        require(_user != _referrer, "Cannot refer self");
+
+        uint256 salt = nextMemberId++;
+        uint256 memberId;
+        do {
+            memberId = 10001 + uint256(keccak256(abi.encodePacked(
+                block.prevrandao, block.timestamp, _user, salt++
+            ))) % 999999;
+        } while (memberIdToAddress[memberId] != address(0));
+
+        User storage u = users[_user];
+        u.isRegistered = true;
+        u.referrer = _referrer;
+        u.registerTime = block.timestamp;
+        u.lastClaimDay = _currentPeriod();
+        userList.push(_user);
+
+        addressToMemberId[_user] = memberId;
+        memberIdToAddress[memberId] = _user;
+
+        if (_referrer != address(0)) {
+            require(users[_referrer].isRegistered, "Referrer not registered");
+            directReferrals[_referrer].push(_user);
+        }
+
+        totalUsers += 1;
+        emit Registered(_user, _referrer, memberId);
+    }
+
+    /// 动态收益按仓位顺序（FIFO）填充：先补满最早的仓位，溢出到下一个仓位；全部满则剩余丢弃
+    function _creditFifo(address _user, uint256 _amount) internal returns (uint256 credited) {
+        User storage user = users[_user];
+        if (user.exited) return 0;
+
+        Position[] storage posList = positions[_user];
+        for (uint256 i = 0; i < posList.length; i++) {
+            if (credited >= _amount) break;
+            Position storage pos = posList[i];
+            if (pos.closed) continue;
+
+            uint256 cap = pos.principal * EXIT_MULTIPLIER;
+            uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
+            if (remaining == 0) {
+                pos.closed = true;
+                continue;
+            }
+
+            uint256 fill = _amount - credited;
+            if (fill > remaining) fill = remaining;
+            pos.earned += fill;
+            credited += fill;
+
+            if (pos.earned >= cap) {
+                pos.closed = true;
+                emit PositionClosed(_user, i, pos.principal, pos.earned);
+            }
+        }
+
+        if (credited > 0) {
+            user.totalEarned += credited;
+        }
+        _checkAccountExit(_user);
+    }
+
+    /// 账号出局判定：所有仓位均 closed 时置 exited = true（emit 只发一次）
+    function _checkAccountExit(address _user) internal {
+        User storage user = users[_user];
+        if (user.exited) return;
+
+        Position[] storage posList = positions[_user];
+        if (posList.length == 0) return;
+        for (uint256 i = 0; i < posList.length; i++) {
+            if (!posList[i].closed) return;
+        }
+        user.exited = true;
+        emit Exited(_user, user.totalEarned);
+    }
+
+    /// 仓位数量触顶时，就地压缩移除已关闭仓位（仅 invest 前调用）
+    function _compactClosedPositions(address _user) internal {
+        Position[] storage posList = positions[_user];
+        if (posList.length < MAX_POSITIONS) return;
+
+        uint256 write = 0;
+        for (uint256 i = 0; i < posList.length; i++) {
+            if (!posList[i].closed) {
+                if (write != i) posList[write] = posList[i];
+                write++;
+            }
+        }
+        while (posList.length > write) posList.pop();
+    }
+
     function _updateTeamVolumesAndLevels(address _user, uint256 _amount) internal {
         address current = users[_user].referrer;
         address child = _user;
@@ -467,7 +699,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
     }
 
-    /// 12 代推荐奖（按投资额基数，投资时分配）
+    /// 12 代推荐奖（投资时按仓位顺序填充上级仓位）
     function _distributeRewards(address _user, uint256 _amount) internal {
         address current = users[_user].referrer;
         uint256 depth = 0;
@@ -482,17 +714,11 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                     !ancestor.isBlacklisted
                 ) {
                     uint256 genReward = _amount * generationRates[depth] / 10000;
-                    genReward = _applyExitLimit(current, genReward);
+                    uint256 credited = _creditFifo(current, genReward);
 
-                    if (genReward > 0) {
-                        ancestor.pendingUSDT += genReward;
-                        ancestor.totalEarned += genReward;
-                        emit GenerationReward(current, _user, uint8(depth + 1), genReward);
-
-                        if (ancestor.totalEarned >= ancestor.exitLimit) {
-                            ancestor.exited = true;
-                            emit Exited(current, ancestor.totalEarned);
-                        }
+                    if (credited > 0) {
+                        ancestor.pendingUSDT += credited;
+                        emit GenerationReward(current, _user, uint8(depth + 1), credited);
                     }
                 }
             }
@@ -502,13 +728,7 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
     }
 
-    /// 团队奖（直推奖 + 级差奖 + 平级/超越奖，随静态收益逐笔结算，XMR 记账）
-    /// _user 获得静态收益 _baseValue 时，沿推荐链向上分配：
-    ///   1. 直推奖：直推上级拿 _baseValue × 上级级别费率（全额）；
-    ///   2. 级差奖：隔代上级拿 _baseValue × (上级费率 − 路径最高费率)，
-    ///      路径 = 收益者自身及向上到该上级之前的所有账户；
-    ///   3. 平级/超越奖：账户每获得一笔动态收益时，其直推上级若级别不高于该账户，
-    ///      额外拿该笔动态收益的 10%；平级/超越奖本身不再触发上级抽取（防嵌套）。
+    /// 团队奖（直推奖 + 级差奖 + 平级/超越奖，随静态收益逐笔结算，XMR 记账，按仓位 FIFO 填充）
     function _distributeTeamRewards(address _user, uint256 _baseValue) internal {
         address current = users[_user].referrer;
         uint256 pathMaxRate = users[_user].level > 0
@@ -531,10 +751,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
                 }
 
                 if (reward > 0) {
-                    reward = _applyExitLimit(current, reward);
-                    if (reward > 0) {
-                        _creditTeamReward(current, _user, reward);
-                        _payPeerBonus(current, reward);
+                    uint256 credited = _creditTeamReward(current, _user, reward);
+                    if (credited > 0) {
+                        _payPeerBonus(current, credited);
                     }
                 }
             }
@@ -550,20 +769,20 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         }
     }
 
-    function _creditTeamReward(address _to, address _from, uint256 _amount) internal {
+    /// 团队奖入账：按仓位 FIFO 填充，实发部分按 XMR 记账；返回实际入账额
+    function _creditTeamReward(address _to, address _from, uint256 _amount) internal returns (uint256 credited) {
         User storage user = users[_to];
-        uint256 xmrReward = _amount * 10 ** 18 / xmrPrice;
+        if (_amount == 0 || user.exited) return 0;
+
+        credited = _creditFifo(_to, _amount);
+        if (credited == 0) return 0;
+
+        uint256 xmrReward = credited * 10 ** 18 / xmrPrice;
         if (xmrReward > 0) {
             xmrToken.mint(address(this), xmrReward);
             user.pendingXMR += xmrReward;
         }
-        user.totalEarned += _amount;
-        emit TeamReward(_to, _from, user.level, _amount);
-
-        if (user.totalEarned >= user.exitLimit) {
-            user.exited = true;
-            emit Exited(_to, user.totalEarned);
-        }
+        emit TeamReward(_to, _from, user.level, credited);
     }
 
     /// 平级/超越奖：_child 获得动态收益 _amount 时，其直推上级若级别不高于 _child，拿 10%
@@ -575,29 +794,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         if (parent.exited || parent.isBlacklisted) return;
         if (users[_child].level < parent.level) return;
 
-        uint256 bonus = _applyExitLimit(up, _amount * 1000 / 10000);
-        if (bonus > 0) {
-            _creditTeamReward(up, _child, bonus);
-        }
-    }
-
-    function _applyExitLimit(address _user, uint256 _earnings) internal returns (uint256) {
-        User storage user = users[_user];
-        if (user.exited) return 0;
-        if (user.exitLimit == 0) return 0;
-
-        uint256 remaining = user.exitLimit > user.totalEarned
-            ? user.exitLimit - user.totalEarned
-            : 0;
-
-        if (remaining == 0) {
-            user.exited = true;
-            emit Exited(_user, user.totalEarned);
-            return 0;
-        }
-
-        uint256 actual = _earnings > remaining ? remaining : _earnings;
-        return actual;
+        uint256 bonus = _amount * 1000 / 10000;
+        _creditTeamReward(up, _child, bonus);
     }
 
     struct UserInfoView {
@@ -658,6 +856,26 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         return user.exitLimit - user.totalEarned;
     }
 
+    /// 仓位数量
+    function getPositionCount(address _user) external view returns (uint256) {
+        return positions[_user].length;
+    }
+
+    /// 单个仓位详情（含剩余额度）
+    function getPositionInfo(address _user, uint256 _index) external view returns (PositionInfoView memory) {
+        require(_index < positions[_user].length, "Invalid index");
+        Position storage pos = positions[_user][_index];
+        uint256 cap = pos.principal * EXIT_MULTIPLIER;
+        return PositionInfoView({
+            principal: pos.principal,
+            earned: pos.earned,
+            lastClaimPeriod: pos.lastClaimPeriod,
+            closed: pos.closed,
+            capacity: cap,
+            remaining: pos.earned < cap ? cap - pos.earned : 0
+        });
+    }
+
     function getLevelInfo(uint8 _level) external view returns (
         uint256 personalRequired,
         uint256 subAreaRequired,
@@ -694,27 +912,33 @@ contract StakingDApp is ReentrancyGuard, Ownable {
         });
     }
 
+    /// 预估静态收益：按各未关闭仓位独立计算后汇总
     function estimateStaticReward(address _user) external view returns (
         uint256 usdtValue,
         uint256 xmrValue
     ) {
-        User storage user = users[_user];
-        if (user.exited || user.personalAmount < MIN_INVESTMENT) return (0, 0);
+        if (xmrPrice == 0) return (0, 0);
 
         uint256 currentPeriod = _currentPeriod();
-        if (currentPeriod <= user.lastClaimDay) return (0, 0);
+        Position[] storage posList = positions[_user];
 
-        uint256 periodsPassed = currentPeriod - user.lastClaimDay;
-        if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
+        for (uint256 i = 0; i < posList.length; i++) {
+            Position storage pos = posList[i];
+            if (pos.closed) continue;
+            if (currentPeriod <= pos.lastClaimPeriod) continue;
 
-        usdtValue = user.personalAmount * DAILY_RATE * periodsPassed / 10000;
+            uint256 periodsPassed = currentPeriod - pos.lastClaimPeriod;
+            if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
 
-        uint256 remaining = user.exitLimit > user.totalEarned
-            ? user.exitLimit - user.totalEarned
-            : 0;
-        if (usdtValue > remaining) usdtValue = remaining;
+            uint256 reward = pos.principal * DAILY_RATE * periodsPassed / 10000;
+            uint256 cap = pos.principal * EXIT_MULTIPLIER;
+            uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
+            if (reward > remaining) reward = remaining;
 
-        if (xmrPrice > 0) {
+            usdtValue += reward;
+        }
+
+        if (usdtValue > 0) {
             xmrValue = usdtValue * 10 ** 18 / xmrPrice;
         }
     }

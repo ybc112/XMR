@@ -35,6 +35,7 @@ const EVENT_CATEGORY_MAP = {
   LevelUpdated: "investments",
   XMRAddressSet: "withdrawals",
   BalanceAdjusted: "investments",
+  PositionClosed: "investments",
 };
 
 // 要扫描的所有事件名

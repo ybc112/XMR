@@ -358,7 +358,7 @@ describe("Coverage Enhancement Tests", function () {
             expect(info.pendingUSDT).to.equal(xmrBefore * ethers.parseEther("200") / E18);
         });
 
-        it("Should handle invest after exit clearing pendingXMR", async function () {
+        it("Should preserve pending balances when investing after exit", async function () {
             const u = signers[0];
             await registerAndInvest(staking, u, ZERO, ethers.parseEther("100"));
             // 10 rounds of advanceDays(30) + claim (30% each) reach the 3x exit limit
@@ -372,10 +372,11 @@ describe("Coverage Enhancement Tests", function () {
             await staking.connect(u).invest(MIN100);
             const info = await staking.getUserInfo(u.address);
             expect(info.exited).to.be.false;
-            expect(info.totalEarned).to.equal(0);
-            expect(info.pendingXMR).to.equal(0);
-            expect(info.pendingUSDT).to.equal(0);
-            expect(info.xmrWithdrawalPending).to.equal(0);
+            // 多仓位设计：历史已赚与未提取余额全部保留
+            expect(info.totalEarned).to.equal(exitedInfo.totalEarned);
+            expect(info.pendingXMR).to.equal(exitedInfo.pendingXMR);
+            expect(info.pendingUSDT).to.equal(exitedInfo.pendingUSDT);
+            expect(info.xmrWithdrawalPending).to.equal(exitedInfo.xmrWithdrawalPending);
         });
 
         it("Should handle team reward chain with blacklisted ancestor", async function () {

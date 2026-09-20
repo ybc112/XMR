@@ -525,7 +525,9 @@ describe("Comprehensive StakingDApp Tests", function () {
             await staking.connect(root).invest(ethers.parseEther("200"));
             const info = await staking.getUserInfo(root.address);
             expect(info.exited).to.be.false;
-            expect(info.personalAmount).to.equal(ethers.parseEther("200"));
+            // 多仓位设计：本金累加（不重置），新仓位独立开始周期
+            expect(info.personalAmount).to.equal(ethers.parseEther("3200"));
+            expect(await staking.getPositionCount(root.address)).to.equal(2);
         });
     });
 
@@ -586,8 +588,11 @@ describe("Comprehensive StakingDApp Tests", function () {
             await staking.connect(u).invest(MIN100);
             const info = await staking.getUserInfo(u.address);
             expect(info.exited).to.be.false;
-            expect(info.totalEarned).to.equal(0);
-            expect(info.exitLimit).to.equal(MIN100 * 3n);
+            // 多仓位设计：历史已赚保留，新仓位独立开始 3 倍周期
+            expect(info.totalEarned).to.equal(MIN100 * 3n);
+            expect(info.personalAmount).to.equal(MIN100 * 2n);
+            expect(info.exitLimit).to.equal(MIN100 * 6n);
+            expect(await staking.getPositionCount(u.address)).to.equal(2);
         });
 
         it("6.4b Should not claim immediately after reinvestment (lastClaimDay reset)", async function () {
@@ -628,9 +633,10 @@ describe("Comprehensive StakingDApp Tests", function () {
             await staking.connect(root).invest(MIN100);
             const infoReinvest = await staking.getUserInfo(root.address);
             expect(infoReinvest.exited).to.be.false;
-            expect(infoReinvest.pendingUSDT).to.equal(0);
-            expect(infoReinvest.pendingXMR).to.equal(0);
-            expect(infoReinvest.xmrWithdrawalPending).to.equal(0);
+            // 多仓位设计：出局后复投保留历史未提取余额
+            expect(infoReinvest.pendingUSDT).to.equal(infoAfter.pendingUSDT);
+            expect(infoReinvest.pendingXMR).to.equal(infoAfter.pendingXMR);
+            expect(infoReinvest.xmrWithdrawalPending).to.equal(infoAfter.xmrWithdrawalPending);
         });
 
         it("6.7 Should not earn after exit until reinvestment", async function () {
@@ -1258,7 +1264,8 @@ describe("Comprehensive StakingDApp Tests", function () {
                 await staking.connect(root).invest(ethers.parseEther("500"));
                 const reinvestedInfo = await staking.getUserInfo(root.address);
                 expect(reinvestedInfo.exited).to.be.false;
-                expect(reinvestedInfo.totalEarned).to.equal(0);
+                // 多仓位设计：历史已赚保留
+                expect(reinvestedInfo.totalEarned).to.equal(exitedInfo.totalEarned);
             }
         });
 

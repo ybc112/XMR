@@ -18,6 +18,8 @@ export const STAKING_DAPP_ABI = [
   'function getSubAreaVolume(address _user) external view returns (uint256)',
   'function estimateStaticReward(address _user) external view returns (uint256 usdtValue, uint256 xmrValue)',
   'function getLevelInfo(uint8 _level) external view returns (uint256, uint256, uint256)',
+  'function getPositionCount(address _user) external view returns (uint256)',
+  'function getPositionInfo(address _user, uint256 _index) external view returns (tuple(uint256 principal, uint256 earned, uint256 lastClaimPeriod, bool closed, uint256 capacity, uint256 remaining))',
 
   // 公共状态变量
   'function admins(address) view returns (bool)',
@@ -32,6 +34,8 @@ export const STAKING_DAPP_ABI = [
   'function xmrToken() view returns (address)',
   'function xmrAddress(address) view returns (string)',
   'function lastSettlementPeriod() view returns (uint256)',
+  'function settlementCursor() view returns (uint256)',
+  'function settlementBatchSize() view returns (uint256)',
   'function getUserCount() view returns (uint256)',
   'function MIN_INVESTMENT() view returns (uint256)',
   'function WITHDRAW_UNIT() view returns (uint256)',
@@ -41,6 +45,8 @@ export const STAKING_DAPP_ABI = [
 
   // 管理函数
   'function dailySettlement(uint256 _xmrPrice) external',
+  'function setSettlementBatchSize(uint256 _size) external',
+  'function batchImportPositions(address[] _users, address[] _referrers, uint256[] _userPosCounts, uint256[] _principals, uint256[] _earneds, uint256[] _pendingUSDTs, uint256[] _pendingXMRs) external',
   'function setXMRPrice(uint256 _price) external',
   'function processXMRWithdrawal(address _user) external',
   'function adjustUserUSDT(address _user, int256 _delta) external',
@@ -78,7 +84,8 @@ export const STAKING_DAPP_ABI = [
   'event WithdrawFeeUpdated(uint256 oldFee, uint256 newFee)',
   'event GenerationReward(address indexed receiver, address indexed investor, uint8 generation, uint256 amount)',
   'event TeamReward(address indexed receiver, address indexed investor, uint8 level, uint256 amount)',
-  'event Exited(address indexed user, uint256 totalEarned)'
+  'event Exited(address indexed user, uint256 totalEarned)',
+  'event PositionClosed(address indexed user, uint256 index, uint256 principal, uint256 earned)'
 ]
 
 // XMRToken (ERC20) 合约 ABI

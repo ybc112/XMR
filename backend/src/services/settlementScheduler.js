@@ -124,20 +124,60 @@ async function runSettlement() {
       return null;
     }
 
-    const tx = await blockchain.stakingContractWithSigner.dailySettlement(
-      priceWei
-    );
-    const receipt = await tx.wait();
+    // 分页结算：合约每笔只处理 settlementBatchSize 个用户，循环调用直到本轮全部处理完
+    // 每次交易等待确认后再发下一笔，避免 nonce 冲突；游标不推进时视为异常终止
+    const total = Number(await blockchain.stakingContract.getUserCount());
+    let cursor = Number(await blockchain.stakingContract.settlementCursor());
+    const txHashes = [];
+    const MAX_ROUNDS = 200; // 安全上限，防止异常死循环
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      if (cursor >= total) break;
+
+      const tx = await blockchain.stakingContractWithSigner.dailySettlement(
+        priceWei
+      );
+      const receipt = await tx.wait();
+      txHashes.push({
+        hash: tx.hash,
+        status: receipt.status === 1 ? "success" : "failed",
+      });
+      if (receipt.status !== 1) {
+        logger.error(`分页结算第 ${round + 1} 笔交易失败，终止本次结算`);
+        break;
+      }
+
+      const newCursor = Number(
+        await blockchain.stakingContract.settlementCursor()
+      );
+      const newTotal = Number(await blockchain.stakingContract.getUserCount());
+      if (newCursor >= newTotal) {
+        cursor = newCursor;
+        break;
+      }
+      if (newCursor <= cursor) {
+        logger.error(
+          `分页结算游标未推进 (${cursor} -> ${newCursor})，终止避免死循环`
+        );
+        break;
+      }
+      cursor = newCursor;
+      logger.info(`分页结算进行中: 已处理 ${cursor}/${newTotal}`);
+    }
+
+    const rounds = txHashes.length;
+    const allOk = txHashes.every((t) => t.status === "success");
     logger.info(
-      `自动结算完成: 周期 ${currentPeriod}, 价格 ${livePrice || "链上价格"}, 交易 ${tx.hash}, 状态 ${
-        receipt.status === 1 ? "成功" : "失败"
+      `自动结算完成: 周期 ${currentPeriod}, 价格 ${livePrice || "链上价格"}, ${rounds} 笔交易, 游标 ${cursor}/${total}, ${
+        allOk ? "全部成功" : "存在失败"
       }`
     );
     return {
-      txHash: tx.hash,
+      txHash: txHashes.length > 0 ? txHashes[0].hash : null,
+      transactionCount: rounds,
       period: currentPeriod,
       price: livePrice ? String(livePrice) : ethers.formatEther(stats.xmrPrice),
-      status: receipt.status === 1 ? "success" : "failed",
+      status: allOk ? "success" : "failed",
     };
   } catch (err) {
     logger.error("自动结算失败:", err.message);

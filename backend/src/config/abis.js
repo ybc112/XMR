@@ -102,6 +102,20 @@ const STAKING_DAPP_ABI = [
   },
   {
     inputs: [],
+    name: "settlementCursor",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "settlementBatchSize",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "getUserCount",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
@@ -167,6 +181,36 @@ const STAKING_DAPP_ABI = [
   },
   {
     inputs: [{ name: "_user", type: "address" }],
+    name: "getPositionCount",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_user", type: "address" },
+      { name: "_index", type: "uint256" },
+    ],
+    name: "getPositionInfo",
+    outputs: [
+      {
+        components: [
+          { name: "principal", type: "uint256" },
+          { name: "earned", type: "uint256" },
+          { name: "lastClaimPeriod", type: "uint256" },
+          { name: "closed", type: "bool" },
+          { name: "capacity", type: "uint256" },
+          { name: "remaining", type: "uint256" },
+        ],
+        name: "positionInfo",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "_user", type: "address" }],
     name: "getSubAreaVolume",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
@@ -219,6 +263,13 @@ const STAKING_DAPP_ABI = [
   {
     inputs: [{ name: "_xmrPrice", type: "uint256" }],
     name: "dailySettlement",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "_size", type: "uint256" }],
+    name: "setSettlementBatchSize",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -291,6 +342,21 @@ const STAKING_DAPP_ABI = [
   {
     inputs: [{ name: "_admin", type: "address" }],
     name: "removeAdmin",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_users", type: "address[]" },
+      { name: "_referrers", type: "address[]" },
+      { name: "_userPosCounts", type: "uint256[]" },
+      { name: "_principals", type: "uint256[]" },
+      { name: "_earneds", type: "uint256[]" },
+      { name: "_pendingUSDTs", type: "uint256[]" },
+      { name: "_pendingXMRs", type: "uint256[]" },
+    ],
+    name: "batchImportPositions",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -483,6 +549,17 @@ const STAKING_DAPP_ABI = [
       { indexed: false, name: "newFee", type: "uint256" },
     ],
     name: "WithdrawFeeUpdated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "index", type: "uint256" },
+      { indexed: false, name: "principal", type: "uint256" },
+      { indexed: false, name: "earned", type: "uint256" },
+    ],
+    name: "PositionClosed",
     type: "event",
   },
 ];

@@ -202,16 +202,21 @@ describe("StakingDApp", function () {
             expect(after.pendingXMR).to.be.gt(0);
         });
 
-        it("Cannot settle twice in same period", async function () {
+        it("Should not double pay across paged settlement calls in same period", async function () {
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
             await time.increase(INTERVAL + 1);
             await staking.connect(admin).dailySettlement(XMR_PRICE);
 
+            const info1 = await staking.getUserInfo(user1.address);
+            // 分页结算语义：同一周期可反复调用（补齐剩余用户），已结算用户不重复发放
             await expect(
                 staking.connect(admin).dailySettlement(XMR_PRICE)
-            ).to.be.revertedWith("Already settled this period");
+            ).to.not.be.reverted;
+            const info2 = await staking.getUserInfo(user1.address);
+            expect(info2.pendingXMR).to.equal(info1.pendingXMR);
+            expect(info2.totalEarned).to.equal(info1.totalEarned);
         });
 
         it("Non-admin cannot call dailySettlement", async function () {
@@ -253,7 +258,237 @@ describe("StakingDApp", function () {
             await staking.connect(user1).invest(MIN_INVESTMENT);
             info = await staking.getUserInfo(user1.address);
             expect(info.exited).to.be.false;
-            expect(info.totalEarned).to.equal(0);
+            // 多仓位设计：历史已赚保留，新仓位独立开始 3 倍周期
+            expect(info.totalEarned).to.equal(MIN_INVESTMENT * 3n);
+            expect(await staking.getPositionCount(user1.address)).to.equal(2);
+            expect(info.personalAmount).to.equal(MIN_INVESTMENT * 2n);
+            expect(info.exitLimit).to.equal(MIN_INVESTMENT * 6n);
+        });
+    });
+
+    describe("Multi-Position（独立仓位记账）", function () {
+        beforeEach(setup);
+
+        it("Creates a new independent position per investment (no principal merge)", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            expect(await staking.getPositionCount(user1.address)).to.equal(2);
+            const p1 = await staking.getPositionInfo(user1.address, 0);
+            const p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.principal).to.equal(MIN_INVESTMENT);
+            expect(p2.principal).to.equal(MIN_INVESTMENT);
+            expect(p1.closed).to.be.false;
+            expect(p2.closed).to.be.false;
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.personalAmount).to.equal(MIN_INVESTMENT * 2n);
+            expect(info.exitLimit).to.equal(MIN_INVESTMENT * 6n);
+        });
+
+        it("Static reward accumulates per position with independent claim progress", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位 1 在周期 P0
+
+            await time.increase(INTERVAL + 1);
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位 2 在周期 P1
+
+            await time.increase(INTERVAL + 1);
+            await staking.connect(user1).claimStaticReward();    // 结算于 P2
+
+            // 仓位 1 过期 2 个周期（2%），仓位 2 过期 1 个周期（1%）——互不干扰
+            const p1 = await staking.getPositionInfo(user1.address, 0);
+            const p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.earned).to.equal(MIN_INVESTMENT * 200n / 10000n);
+            expect(p2.earned).to.equal(MIN_INVESTMENT * 100n / 10000n);
+
+            // 账号级汇总
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.totalEarned).to.equal(MIN_INVESTMENT * 300n / 10000n);
+        });
+
+        it("Dynamic rewards fill positions FIFO: +20 closes position 1, +80 overflows to position 2", async function () {
+            await staking.connect(user1).register(ZERO); // root 仓位1
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            // child A 投 2800 -> root 推荐奖 280，仓位1 earned=280（剩 20）
+            await staking.connect(user2).register(user1.address);
+            await staking.connect(user2).invest(ethers.parseEther("2800"));
+            let p1 = await staking.getPositionInfo(user1.address, 0);
+            expect(p1.earned).to.equal(ethers.parseEther("280"));
+
+            // root 补投 100 -> 生成仓位2
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            // child B 投 1000 -> 推荐奖 100：仓位1 补满 +20 出局，溢出 +80 进仓位2
+            await staking.connect(user3).register(user1.address);
+            await staking.connect(user3).invest(ethers.parseEther("1000"));
+
+            p1 = await staking.getPositionInfo(user1.address, 0);
+            const p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.earned).to.equal(ethers.parseEther("300"));
+            expect(p1.closed).to.be.true;
+            expect(p2.earned).to.equal(ethers.parseEther("80"));
+            expect(p2.closed).to.be.false;
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.totalEarned).to.equal(ethers.parseEther("380"));
+            expect(info.exited).to.be.false;
+        });
+
+        it("Closed position stops earning while remaining positions continue", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位1
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位2
+
+            // child 投 3000 -> 推荐奖 300 填满仓位1（FIFO 先补最早的）
+            await staking.connect(user2).register(user1.address);
+            await staking.connect(user2).invest(ethers.parseEther("3000"));
+            let p1 = await staking.getPositionInfo(user1.address, 0);
+            let p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.closed).to.be.true;
+            expect(p1.earned).to.equal(ethers.parseEther("300"));
+            expect(p2.earned).to.equal(0);
+
+            // 之后结算只发仓位2
+            await time.increase(INTERVAL + 1);
+            await staking.connect(user1).claimStaticReward();
+            p1 = await staking.getPositionInfo(user1.address, 0);
+            p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.earned).to.equal(ethers.parseEther("300")); // 不再增长
+            expect(p2.earned).to.equal(MIN_INVESTMENT * 100n / 10000n);
+            expect(p2.closed).to.be.false;
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.exited).to.be.false; // 仓位2 未满 -> 账号未出局
+        });
+
+        it("Account exits only when all positions are closed", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位1
+
+            // childA 投 3000 -> 仓位1 填满关闭
+            await staking.connect(user2).register(user1.address);
+            await staking.connect(user2).invest(ethers.parseEther("3000"));
+            // childB 投 2000 -> 200 进仓位1? 不，仓位1已满但需先有仓位2
+            // 先补第二仓位，再通过 childB 填满
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 仓位2
+            expect((await staking.getUserInfo(user1.address)).exited).to.be.false;
+
+            // childC 投 3000 -> 300 填满仓位2 -> 全部关闭 -> 账号出局
+            await staking.connect(user3).register(user1.address);
+            await staking.connect(user3).invest(ethers.parseEther("3000"));
+
+            const p1 = await staking.getPositionInfo(user1.address, 0);
+            const p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p1.closed).to.be.true;
+            expect(p2.closed).to.be.true;
+
+            const info = await staking.getUserInfo(user1.address);
+            expect(info.exited).to.be.true;
+            expect(info.totalEarned).to.equal(ethers.parseEther("600"));
+
+            // 出局后不再产生收益
+            await time.increase(INTERVAL + 1);
+            await expect(staking.connect(user1).claimStaticReward()).to.be.revertedWith("User exited");
+            const after = await staking.getUserInfo(user1.address);
+            expect(after.totalEarned).to.equal(ethers.parseEther("600"));
+        });
+
+        it("Reinvestment after exit still earns from the new position only", async function () {
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+            await staking.connect(user2).register(user1.address);
+            await staking.connect(user2).invest(ethers.parseEther("3000"));
+
+            let p1 = await staking.getPositionInfo(user1.address, 0);
+            expect(p1.closed).to.be.true;
+            expect((await staking.getUserInfo(user1.address)).exited).to.be.true;
+
+            await staking.connect(user1).invest(MIN_INVESTMENT); // 出局后复投
+            expect((await staking.getUserInfo(user1.address)).exited).to.be.false;
+
+            await time.increase(INTERVAL + 1);
+            await staking.connect(user1).claimStaticReward();
+            const p2 = await staking.getPositionInfo(user1.address, 1);
+            expect(p2.earned).to.equal(MIN_INVESTMENT * 100n / 10000n); // 新仓位正常获息
+        });
+
+        it("Enforces MAX_POSITIONS (20) upper limit", async function () {
+            await staking.connect(user1).register(ZERO);
+            for (let i = 0; i < 20; i++) {
+                await staking.connect(user1).invest(MIN_INVESTMENT);
+            }
+            expect(await staking.getPositionCount(user1.address)).to.equal(20);
+            await expect(staking.connect(user1).invest(MIN_INVESTMENT))
+                .to.be.revertedWith("Too many positions");
+        });
+
+        it("Paged settlement settles all users with no double pay", async function () {
+            await staking.connect(owner).setSettlementBatchSize(2);
+
+            const members = [user1, user2, user3, users[0], users[1]];
+            for (const m of members) {
+                await staking.connect(m).register(ZERO);
+                await staking.connect(m).invest(MIN_INVESTMENT);
+            }
+
+            await time.increase(INTERVAL + 1);
+
+            const total = Number(await staking.getUserCount());
+            let cursor = Number(await staking.settlementCursor());
+            let guard = 0;
+            while (cursor < total && guard++ < 30) {
+                await staking.connect(admin).dailySettlement(XMR_PRICE);
+                cursor = Number(await staking.settlementCursor());
+            }
+            expect(cursor).to.be.gte(total);
+
+            const expected = MIN_INVESTMENT * 100n / 10000n;
+            for (const m of members) {
+                const info = await staking.getUserInfo(m.address);
+                expect(info.totalEarned).to.equal(expected); // 恰好 1%
+                // 再次结算不重复发放
+                expect((await staking.estimateStaticReward(m.address)).usdtValue).to.equal(0);
+            }
+        });
+
+        it("batchImportPositions imports multi-position users with preserved balances", async function () {
+            const parent = user1.address;
+            const child = user2.address;
+
+            await staking.batchImportPositions(
+                [parent, child],                                  // users
+                [ZERO, parent],                                   // referrers
+                [1, 2],                                           // position counts
+                [MIN_INVESTMENT, MIN_INVESTMENT, MIN_INVESTMENT], // principals
+                [0, ethers.parseEther("50"), 0],                  // earneds
+                [ethers.parseEther("10"), ethers.parseEther("20")], // pending USDT
+                [ethers.parseEther("1"), ethers.parseEther("2")]    // pending XMR
+            );
+
+            const parentInfo = await staking.getUserInfo(parent);
+            expect(parentInfo.personalAmount).to.equal(MIN_INVESTMENT);
+            expect(parentInfo.pendingUSDT).to.equal(ethers.parseEther("10"));
+
+            const childInfo = await staking.getUserInfo(child);
+            expect(childInfo.personalAmount).to.equal(MIN_INVESTMENT * 2n);
+            expect(childInfo.pendingUSDT).to.equal(ethers.parseEther("20"));
+            expect(childInfo.pendingXMR).to.equal(ethers.parseEther("2"));
+
+            expect(await staking.getPositionCount(child)).to.equal(2);
+            const c0 = await staking.getPositionInfo(child, 0);
+            expect(c0.earned).to.equal(ethers.parseEther("50"));
+            const c1 = await staking.getPositionInfo(child, 1);
+            expect(c1.principal).to.equal(MIN_INVESTMENT);
+            expect(c1.closed).to.be.false;
+
+            // 上级团队业绩 = 下级全部仓位本金
+            expect(parentInfo.teamTotalVolume).to.equal(MIN_INVESTMENT * 2n);
+            // 推荐关系
+            const refs = await staking.getDirectReferrals(parent);
+            expect(refs[0]).to.equal(child);
         });
     });
 

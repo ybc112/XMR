@@ -17,7 +17,7 @@ async function deployContracts() {
     await xmrToken.waitForDeployment();
 
     const StakingDApp = await ethers.getContractFactory("StakingDApp");
-    const staking = await StakingDApp.deploy(await usdt.getAddress(), await xmrToken.getAddress());
+    const staking = await StakingDApp.deploy(await usdt.getAddress(), await xmrToken.getAddress(), 0);
     await staking.waitForDeployment();
 
     await xmrToken.setMinter(await staking.getAddress());

@@ -12,6 +12,8 @@ const STATE_FILE = path.join(__dirname, "..", `deploy-state-${NETWORK}.json`);
 let USDT_ADDRESS = process.env.USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955";
 const MULTISIG_OWNERS = (process.env.MULTISIG_OWNERS || "").split(",").map(s => s.trim()).filter(Boolean);
 const MULTISIG_REQUIRED = parseInt(process.env.MULTISIG_REQUIRED || "2", 10);
+// 结算周期（秒）：0/省略 = 24h（86400），测试网可设 600（10 分钟）快速验证
+const SETTLEMENT_INTERVAL = parseInt(process.env.SETTLEMENT_INTERVAL || "0", 10);
 const DEPLOY_MOCK_USDT = process.env.DEPLOY_MOCK_USDT === "true";
 const TOTAL_STEPS = DEPLOY_MOCK_USDT ? 7 : 6;
 let stepNo = 0;
@@ -168,7 +170,7 @@ async function main() {
     const artifact = JSON.parse(fs.readFileSync(
       path.join(__dirname, "..", "artifacts", "contracts", "StakingDApp.sol", "StakingDApp.json"), "utf8"));
     const factory = new ethers.ContractFactory(stakingAbi, artifact.bytecode, wallet);
-    const c = await factory.deploy(USDT_ADDRESS, state.xmrToken);
+    const c = await factory.deploy(USDT_ADDRESS, state.xmrToken, SETTLEMENT_INTERVAL);
     await c.waitForDeployment();
     state.stakingDApp = await c.getAddress();
     saveState(state);

@@ -65,9 +65,11 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256 public constant MAX_CLAIM_DAYS = 30;
     uint256 public constant WITHDRAW_UNIT = 10 * 10 ** 18;
     uint256 public constant DAILY_RATE = 100;
-    uint256 public constant SETTLEMENT_INTERVAL = 86400;
     uint256 public constant SETTLEMENT_ANCHOR = 1767240000;
-    uint256 public constant MAX_CLAIM_PERIODS = MAX_CLAIM_DAYS * DAY_SECONDS / SETTLEMENT_INTERVAL;
+    /// 单个仓位最多允许补领的周期数（= 30 天 / 周期长度，构造时按 settlementInterval 计算）
+    uint256 public immutable maxClaimPeriods;
+    /// 结算周期（秒）：构造参数，0 或省略 = 24h（86400）；测试网可传 600（10 分钟）便于快速验证
+    uint256 public immutable settlementInterval;
     /// 单账号最多仓位数量（超过后先清理已关闭仓位，仍满则拒绝新仓位）
     uint256 public constant MAX_POSITIONS = 20;
 
@@ -119,9 +121,14 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     /// 单仓位拿满 3 倍出局
     event PositionClosed(address indexed user, uint256 index, uint256 principal, uint256 earned);
 
-    constructor(address _usdt, address _xmr) Ownable(msg.sender) {
+    constructor(address _usdt, address _xmr, uint256 _settlementInterval) Ownable(msg.sender) {
         usdtToken = IERC20(_usdt);
         xmrToken = XMRToken(_xmr);
+
+        // 结算周期：0/省略 = 24h（86400s），测试网可传短周期（如 600s = 10 分钟）快速验证
+        settlementInterval = _settlementInterval == 0 ? DAY_SECONDS : _settlementInterval;
+        // 最多补领 30 天的周期数（随周期长度换算）
+        maxClaimPeriods = MAX_CLAIM_DAYS * DAY_SECONDS / settlementInterval;
 
         levels[0] = LevelInfo(200 * 10 ** 18, 5_000 * 10 ** 18, 500);
         levels[1] = LevelInfo(500 * 10 ** 18, 20_000 * 10 ** 18, 1000);
@@ -325,11 +332,11 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
     function _currentPeriod() internal view returns (uint256) {
         return block.timestamp >= SETTLEMENT_ANCHOR
-            ? (block.timestamp - SETTLEMENT_ANCHOR) / SETTLEMENT_INTERVAL
+            ? (block.timestamp - SETTLEMENT_ANCHOR) / settlementInterval
             : 0;
     }
 
-    /// 多仓位静态收益结算：每个未关闭仓位独立累计（principal × 1%/周期），各自封顶 3 倍本金
+    /// 多仓位静态收益结算：每个未关闭仓位独立累计（日化 1%，按周期长度缩放），各自封顶 3 倍本金
     function _settleUser(address _user, uint256 _targetPeriod) internal {
         User storage user = users[_user];
         if (user.isBlacklisted || user.exited || xmrPrice == 0) return;
@@ -344,9 +351,11 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             if (_targetPeriod <= pos.lastClaimPeriod) continue;
 
             uint256 periodsPassed = _targetPeriod - pos.lastClaimPeriod;
-            if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
+            if (periodsPassed > maxClaimPeriods) periodsPassed = maxClaimPeriods;
 
-            uint256 usdtReward = pos.principal * DAILY_RATE * periodsPassed / 10000;
+            // 日化 1%（DAILY_RATE=100/10000）按周期长度缩放：短周期(10分钟)每周期发放 1% × 周期/天
+            uint256 usdtReward = pos.principal * DAILY_RATE * periodsPassed
+                * settlementInterval / (DAY_SECONDS * 10000);
             uint256 cap = pos.principal * EXIT_MULTIPLIER;
             uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
             if (remaining > 0) {
@@ -928,9 +937,11 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             if (currentPeriod <= pos.lastClaimPeriod) continue;
 
             uint256 periodsPassed = currentPeriod - pos.lastClaimPeriod;
-            if (periodsPassed > MAX_CLAIM_PERIODS) periodsPassed = MAX_CLAIM_PERIODS;
+            if (periodsPassed > maxClaimPeriods) periodsPassed = maxClaimPeriods;
 
-            uint256 reward = pos.principal * DAILY_RATE * periodsPassed / 10000;
+            // 与结算公式一致：日化 1% 按周期长度缩放
+            uint256 reward = pos.principal * DAILY_RATE * periodsPassed
+                * settlementInterval / (DAY_SECONDS * 10000);
             uint256 cap = pos.principal * EXIT_MULTIPLIER;
             uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
             if (reward > remaining) reward = remaining;

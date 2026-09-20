@@ -16,7 +16,9 @@ async function main() {
 
     console.log("\n2. Deploying StakingDApp...");
     const StakingDApp = await ethers.getContractFactory("StakingDApp");
-    const stakingDApp = await StakingDApp.deploy(USDT_ADDRESS, xmrTokenAddr);
+    // 结算周期（秒）：0/省略 = 24h；测试网可设 600（10 分钟）
+    const settlementInterval = parseInt(process.env.SETTLEMENT_INTERVAL || "0", 10);
+    const stakingDApp = await StakingDApp.deploy(USDT_ADDRESS, xmrTokenAddr, settlementInterval);
     await stakingDApp.waitForDeployment();
     const stakingDAppAddr = await stakingDApp.getAddress();
     console.log("   StakingDApp deployed to:", stakingDAppAddr);

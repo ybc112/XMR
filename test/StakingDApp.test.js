@@ -24,7 +24,7 @@ describe("StakingDApp", function () {
         await xmrToken.waitForDeployment();
 
         const StakingDApp = await ethers.getContractFactory("StakingDApp");
-        staking = await StakingDApp.deploy(await usdt.getAddress(), await xmrToken.getAddress());
+        staking = await StakingDApp.deploy(await usdt.getAddress(), await xmrToken.getAddress(), 0);
         await staking.waitForDeployment();
 
         await xmrToken.setMinter(await staking.getAddress());
@@ -107,7 +107,7 @@ describe("StakingDApp", function () {
 
         it("DAILY_RATE is locked to 100 (1%)", async function () {
             expect(await staking.DAILY_RATE()).to.equal(100);
-            expect(await staking.SETTLEMENT_INTERVAL()).to.equal(86400);
+            expect(await staking.settlementInterval()).to.equal(86400);
         });
 
         it("Manual claim after one full period pays full 1% of investment", async function () {
@@ -489,6 +489,55 @@ describe("StakingDApp", function () {
             // 推荐关系
             const refs = await staking.getDirectReferrals(parent);
             expect(refs[0]).to.equal(child);
+        });
+    });
+
+    describe("Configurable settlement interval (120s testnet cycle)", function () {
+        let staking, usdt, xmrToken;
+
+        beforeEach(async function () {
+            [owner, admin, user1, ...users] = await ethers.getSigners();
+
+            const MockUSDT = await ethers.getContractFactory("MockUSDT");
+            usdt = await MockUSDT.deploy();
+            await usdt.waitForDeployment();
+
+            const XMRToken = await ethers.getContractFactory("XMRToken");
+            xmrToken = await XMRToken.deploy();
+            await xmrToken.waitForDeployment();
+
+            const StakingDApp = await ethers.getContractFactory("StakingDApp");
+            // 2 分钟一个周期
+            staking = await StakingDApp.deploy(await usdt.getAddress(), await xmrToken.getAddress(), 120);
+            await staking.waitForDeployment();
+            await xmrToken.setMinter(await staking.getAddress());
+
+            await usdt.mint(user1.address, ethers.parseEther("1000000"));
+            await usdt.connect(user1).approve(await staking.getAddress(), ethers.MaxUint256);
+        });
+
+        it("settlementInterval=120 and daily rate stays 1% over a full day", async function () {
+            expect(await staking.settlementInterval()).to.equal(120);
+            // 30 天折算的周期数上限
+            expect(await staking.maxClaimPeriods()).to.equal(21600);
+
+            await staking.connect(user1).register(ZERO);
+            await staking.connect(user1).invest(MIN_INVESTMENT);
+
+            const before = await staking.getPositionInfo(user1.address, 0);
+            const periodBefore = Number(before.lastClaimPeriod);
+
+            // 前进一个完整「日」（86400s = 720 个 2 分钟周期）
+            await time.increase(86400);
+            await staking.connect(user1).claimStaticReward();
+
+            const after = await staking.getPositionInfo(user1.address, 0);
+            const periodsPassed = Number(after.lastClaimPeriod) - periodBefore;
+            expect(periodsPassed).to.be.gte(719);
+
+            // 实际发放按 「本金 × 日化1% × 经过周期 × 周期/天」 精确匹配合约
+            const expected = MIN_INVESTMENT * 100n * BigInt(periodsPassed) * 120n / (86400n * 10000n);
+            expect(after.earned).to.equal(expected);
         });
     });
 

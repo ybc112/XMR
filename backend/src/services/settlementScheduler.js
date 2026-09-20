@@ -73,7 +73,7 @@ async function fetchXmrUsdPrice() {
  */
 async function getCurrentPeriod() {
   const [interval, anchor] = await Promise.all([
-    blockchain.stakingContract.SETTLEMENT_INTERVAL(),
+    blockchain.stakingContract.settlementInterval(),
     blockchain.stakingContract.SETTLEMENT_ANCHOR(),
   ]);
   const now = Math.floor(Date.now() / 1000);
@@ -215,6 +215,22 @@ function start() {
   runSettlement().catch((err) =>
     logger.error("启动时自动结算异常:", err.message)
   );
+
+  // 短周期模式（如测试网 2 分钟结算周期）：SETTLEMENT_INTERVAL_MINUTES < 1440 时按 N 分钟循环调度
+  // runSettlement 自带「无新周期跳过」+「分页结算」，可安全高频调用
+  const intervalMin = config.settlementIntervalMinutes || 1440;
+  if (intervalMin < 1440 && intervalMin > 0) {
+    const ms = intervalMin * 60 * 1000;
+    logger.info(
+      `自动结算调度已启动，每 ${intervalMin} 分钟执行一次（短周期模式，测试网/联调环境）`
+    );
+    timer = setInterval(() => {
+      runSettlement().catch((err) =>
+        logger.error("定时自动结算异常:", err.message)
+      );
+    }, ms);
+    return;
+  }
 
   const firstRun = nextRunTime();
   const delayMs = firstRun.getTime() - Date.now();

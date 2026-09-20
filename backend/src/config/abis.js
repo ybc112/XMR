@@ -123,7 +123,7 @@ const STAKING_DAPP_ABI = [
   },
   {
     inputs: [],
-    name: "SETTLEMENT_INTERVAL",
+    name: "settlementInterval",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",

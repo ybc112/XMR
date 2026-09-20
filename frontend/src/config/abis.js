@@ -40,7 +40,7 @@ export const STAKING_DAPP_ABI = [
   'function MIN_INVESTMENT() view returns (uint256)',
   'function WITHDRAW_UNIT() view returns (uint256)',
   'function DAILY_RATE() view returns (uint256)',
-  'function SETTLEMENT_INTERVAL() view returns (uint256)',
+  'function settlementInterval() view returns (uint256)',
   'function SETTLEMENT_ANCHOR() view returns (uint256)',
 
   // 管理函数

@@ -100,17 +100,20 @@ async function scanBlockRange(fromBlock, toBlock) {
   let rawLogs;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      rawLogs = await scanProvider.getLogs({
-        address: config.stakingContractAddress,
-        fromBlock,
-        toBlock,
-      });
+      rawLogs = await withTimeout(
+        scanProvider.getLogs({
+          address: config.stakingContractAddress,
+          fromBlock,
+          toBlock,
+        }),
+        30000
+      );
       break;
     } catch (e) {
       const msg = String(e.message || "");
-      if (attempt < 4 && (msg.includes("rate limit") || msg.includes("429") || msg.includes("missing response"))) {
+      if (attempt < 4 && (msg.includes("rate limit") || msg.includes("429") || msg.includes("missing response") || msg.includes("超时") || msg.includes("timeout"))) {
         const wait = Math.min(2000 * (attempt + 1), 10000);
-        logger.warn(`getLogs 限流，${wait / 1000}s 后重试 (${attempt + 1}/5)`);
+        logger.warn(`getLogs 限流/超时，${wait / 1000}s 后重试 (${attempt + 1}/5)`);
         await new Promise(r => setTimeout(r, wait));
       } else {
         throw e;
@@ -210,6 +213,18 @@ async function backfillBlockTimestamps(events) {
 }
 
 /**
+ * 带超时的 RPC 调用封装：公共节点偶发"连接建立但永不返回"，避免扫描/查询无限挂起
+ */
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`RPC 请求超时 (${ms}ms)`)), ms)
+    ),
+  ]);
+}
+
+/**
  * 执行一次完整的扫描（从上次扫描位置到最新区块）
  */
 async function performScan() {
@@ -221,7 +236,7 @@ async function performScan() {
   isScanning = true;
 
   try {
-    const latestBlock = await scanProvider.getBlockNumber();
+    const latestBlock = await withTimeout(scanProvider.getBlockNumber(), 30000);
 
     // 扫描起点优先级：内存缓存 > 数据库 scan_state > 配置起始区块
     let lastScanned = cache.getLastScannedBlock();
@@ -249,18 +264,23 @@ async function performScan() {
       return;
     }
 
+    // 单轮扫描跨度上限：超大 range 会被节点拒绝/拉取过久，每轮最多推进 MAX_SCAN_SPAN 块，
+    // 剩余块数下一轮（扫描间隔）继续，保证 initialized 尽快为 true、事件尽快入库
+    const MAX_SCAN_SPAN = 30000;
+    const passLimit = Math.min(latestBlock, fromBlock + MAX_SCAN_SPAN - 1);
+
     logger.info(
-      `开始扫描事件: ${fromBlock} -> ${latestBlock} (${latestBlock - fromBlock + 1} 个区块)`
+      `开始扫描事件: ${fromBlock} -> ${passLimit} (本轮 ${passLimit - fromBlock + 1} 个区块, 链上最新 ${latestBlock})`
     );
 
     // 分批扫描
     let currentBlock = fromBlock;
     let totalFound = 0;
 
-    while (currentBlock <= latestBlock) {
+    while (currentBlock <= passLimit) {
       const batchEnd = Math.min(
         currentBlock + config.scanBatchSize - 1,
-        latestBlock
+        passLimit
       );
 
       const events = await scanBlockRange(currentBlock, batchEnd);
@@ -277,12 +297,12 @@ async function performScan() {
     }
 
     initialized = true;
-    cache.setLastScannedBlock(latestBlock);
-    db.setScanState("lastScannedBlock", String(latestBlock));
+    cache.setLastScannedBlock(passLimit);
+    db.setScanState("lastScannedBlock", String(passLimit));
 
     const stats = cache.getStats();
     logger.info(
-      `扫描完成，本次发现 ${totalFound} 个事件。缓存统计:`,
+      `本轮扫描完成 ${fromBlock} -> ${passLimit}，发现 ${totalFound} 个事件。缓存统计:`,
       stats
     );
   } catch (err) {

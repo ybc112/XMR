@@ -96,15 +96,21 @@ const provider = createMultiProvider(
 );
 
 /**
- * 事件扫描专用 Provider：仅用支持 eth_getLogs 的节点（tatum/nodereal/blastapi），
- * 避免 getLogs 在 dataseed（范围限制）等节点上空转超时
+ * 事件扫描专用 Provider：仅用支持 eth_getLogs 的节点
+ * 主网用 tatum/nodereal/blastapi（避免 dataseed 范围限制）；测试网用测试网节点，避免扫错链
  */
+const SCAN_DEFAULT_MAINNET = [
+  "https://bsc-mainnet.gateway.tatum.io",
+  "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
+  "https://bsc-mainnet.public.blastapi.io",
+];
+const SCAN_DEFAULT_TESTNET = [
+  "https://bsc-testnet.bnbchain.org",
+  "https://bsc-testnet.publicnode.com",
+  "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
+];
 const scanProvider = createMultiProvider(
-  [
-    "https://bsc-mainnet.gateway.tatum.io",
-    "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
-    "https://bsc-mainnet.public.blastapi.io",
-  ],
+  config.chainId === 97 ? SCAN_DEFAULT_TESTNET : SCAN_DEFAULT_MAINNET,
   8000
 );
 

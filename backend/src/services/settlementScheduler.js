@@ -125,15 +125,15 @@ async function runSettlement() {
     }
 
     // 分页结算：合约每笔只处理 settlementBatchSize 个用户，循环调用直到本轮全部处理完
-    // 每次交易等待确认后再发下一笔，避免 nonce 冲突；游标不推进时视为异常终止
+    // 注意：跨周期时，即使游标已在上周期末尾(starter cursor >= total)，也必须发一笔
+    // dailySettlement —— 合约只有在该交易里 currentPeriod > lastSettlementPeriod 时才重置
+    // 游标并结算新周期用户；否则新周期永远不会被结算（历史 bug：收益停在 4 个周期）。
     const total = Number(await blockchain.stakingContract.getUserCount());
     let cursor = Number(await blockchain.stakingContract.settlementCursor());
     const txHashes = [];
     const MAX_ROUNDS = 200; // 安全上限，防止异常死循环
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      if (cursor >= total) break;
-
       const tx = await blockchain.stakingContractWithSigner.dailySettlement(
         priceWei
       );
@@ -146,6 +146,14 @@ async function runSettlement() {
         logger.error(`分页结算第 ${round + 1} 笔交易失败，终止本次结算`);
         break;
       }
+
+      // 若这笔交易消费了新周期（触发 currentPeriod > lastSettlementPeriod 分支：
+      // 合约已把游标重置为 0 并结算了新周期首批用户），本轮结算完成
+      // （不能用游标判断：新周期首笔会把游标重置变小，误报"未推进"）
+      const afterPeriod = Number(
+        await blockchain.stakingContract.lastSettlementPeriod()
+      );
+      if (afterPeriod > lastPeriod) break;
 
       const newCursor = Number(
         await blockchain.stakingContract.settlementCursor()

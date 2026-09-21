@@ -516,28 +516,26 @@ describe("StakingDApp", function () {
             await usdt.connect(user1).approve(await staking.getAddress(), ethers.MaxUint256);
         });
 
-        it("settlementInterval=120 and daily rate stays 1% over a full day", async function () {
+        it("settlementInterval=120 but every period = 1 day (1% per period)", async function () {
             expect(await staking.settlementInterval()).to.equal(120);
-            // 30 天折算的周期数上限
-            expect(await staking.maxClaimPeriods()).to.equal(21600);
+            // 每周期 = 1 天：最大补领 30 个周期（30 天收益）
+            expect(await staking.maxClaimPeriods()).to.equal(30);
 
             await staking.connect(user1).register(ZERO);
             await staking.connect(user1).invest(MIN_INVESTMENT);
 
-            const before = await staking.getPositionInfo(user1.address, 0);
-            const periodBefore = Number(before.lastClaimPeriod);
-
-            // 前进一个完整「日」（86400s = 720 个 2 分钟周期）
-            await time.increase(86400);
+            // 前进 1 个周期（120s = 1 天）：直接发放日化 1% = 100 × 1% = 1 USDT
+            await time.increase(120 + 1);
             await staking.connect(user1).claimStaticReward();
 
             const after = await staking.getPositionInfo(user1.address, 0);
-            const periodsPassed = Number(after.lastClaimPeriod) - periodBefore;
-            expect(periodsPassed).to.be.gte(719);
+            expect(after.earned).to.equal(ethers.parseEther("1"));
 
-            // 实际发放按 「本金 × 日化1% × 经过周期 × 周期/天」 精确匹配合约
-            const expected = MIN_INVESTMENT * 100n * BigInt(periodsPassed) * 120n / (86400n * 10000n);
-            expect(after.earned).to.equal(expected);
+            // 跨 30+ 周期未结算 → 只补发 30 个周期（30 天）收益
+            await time.increase(120 * 100);
+            await staking.connect(user1).claimStaticReward();
+            const afterCatchUp = await staking.getPositionInfo(user1.address, 0);
+            expect(afterCatchUp.earned).to.equal(ethers.parseEther("31")); // 1 + 30
         });
     });
 

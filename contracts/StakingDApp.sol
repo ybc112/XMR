@@ -66,9 +66,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
     uint256 public constant WITHDRAW_UNIT = 10 * 10 ** 18;
     uint256 public constant DAILY_RATE = 100;
     uint256 public constant SETTLEMENT_ANCHOR = 1767240000;
-    /// 单个仓位最多允许补领的周期数（= 30 天 / 周期长度，构造时按 settlementInterval 计算）
+    /// 单个仓位最多允许补领的周期数 = 30（每周期 = 1 天，共 30 天）
     uint256 public immutable maxClaimPeriods;
-    /// 结算周期（秒）：构造参数，0 或省略 = 24h（86400）；测试网可传 600（10 分钟）便于快速验证
+    /// 结算周期（秒）：构造参数，0/省略 = 24h（86400）；测试网可传 120（2 分钟）——此时每周期 = 1 天快速验证
     uint256 public immutable settlementInterval;
     /// 单账号最多仓位数量（超过后先清理已关闭仓位，仍满则拒绝新仓位）
     uint256 public constant MAX_POSITIONS = 20;
@@ -127,8 +127,8 @@ contract StakingDApp is ReentrancyGuard, Ownable {
 
         // 结算周期：0/省略 = 24h（86400s），测试网可传短周期（如 600s = 10 分钟）快速验证
         settlementInterval = _settlementInterval == 0 ? DAY_SECONDS : _settlementInterval;
-        // 最多补领 30 天的周期数（随周期长度换算）
-        maxClaimPeriods = MAX_CLAIM_DAYS * DAY_SECONDS / settlementInterval;
+        // 每周期 = 1 天：最多补领 30 个周期（30 天收益）
+        maxClaimPeriods = MAX_CLAIM_DAYS;
 
         levels[0] = LevelInfo(200 * 10 ** 18, 5_000 * 10 ** 18, 500);
         levels[1] = LevelInfo(500 * 10 ** 18, 20_000 * 10 ** 18, 1000);
@@ -353,9 +353,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             uint256 periodsPassed = _targetPeriod - pos.lastClaimPeriod;
             if (periodsPassed > maxClaimPeriods) periodsPassed = maxClaimPeriods;
 
-            // 日化 1%（DAILY_RATE=100/10000）按周期长度缩放：短周期(10分钟)每周期发放 1% × 周期/天
+            // 每周期 = 1 天：每周期发放日化 1%（不再按周期秒数缩放，测试网 2 分钟周期=1 天，每次即 1%）
             uint256 usdtReward = pos.principal * DAILY_RATE * periodsPassed
-                * settlementInterval / (DAY_SECONDS * 10000);
+                / 10000;
             uint256 cap = pos.principal * EXIT_MULTIPLIER;
             uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
             if (remaining > 0) {
@@ -939,9 +939,9 @@ contract StakingDApp is ReentrancyGuard, Ownable {
             uint256 periodsPassed = currentPeriod - pos.lastClaimPeriod;
             if (periodsPassed > maxClaimPeriods) periodsPassed = maxClaimPeriods;
 
-            // 与结算公式一致：日化 1% 按周期长度缩放
+            // 与结算公式一致：每周期 = 1 天，发放日化 1%
             uint256 reward = pos.principal * DAILY_RATE * periodsPassed
-                * settlementInterval / (DAY_SECONDS * 10000);
+                / 10000;
             uint256 cap = pos.principal * EXIT_MULTIPLIER;
             uint256 remaining = pos.earned < cap ? cap - pos.earned : 0;
             if (reward > remaining) reward = remaining;
